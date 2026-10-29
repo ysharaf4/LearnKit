@@ -145,26 +145,28 @@
   width: 100%;
 }
 
-body.is-mobile .learnkit .learnkit-deck-controls-row {
+/* Phone & narrow-viewport deck controls.
+   Tablets and desktop keep inline controls and natural button sizing. */
+body.is-phone .learnkit .learnkit-deck-controls-row {
   width: 100%;
 }
 
-body.is-mobile .learnkit .learnkit-deck-title-actions {
+body.is-phone .learnkit .learnkit-deck-title-actions {
   width: 100%;
   justify-content: stretch;
   display: flex;
   flex-wrap: wrap;
 }
 
-body.is-mobile .learnkit .learnkit-deck-group-combo {
+body.is-phone .learnkit .learnkit-deck-group-combo {
   width: 100%;
 }
 
-body.is-mobile .learnkit .learnkit-deck-group-popover {
+body.is-phone .learnkit .learnkit-deck-group-popover {
   width: 100% ;
 }
 
-body.is-mobile .learnkit .lk-review-title-strip-deck .lk-review-title-row {
+body.is-phone .learnkit .lk-review-title-strip-deck .lk-review-title-row {
   display: grid;
   grid-template-columns: 1fr;
   justify-items: center;
@@ -172,65 +174,155 @@ body.is-mobile .learnkit .lk-review-title-strip-deck .lk-review-title-row {
   gap: 8px;
 }
 
-body.is-mobile .learnkit .lk-review-title-strip-deck .lk-review-title-row > :first-child {
+body.is-phone .learnkit .lk-review-title-strip-deck .lk-review-title-row > :first-child {
   width: 100%;
   text-align: center;
 }
 
-body.is-mobile .learnkit .lk-review-title-strip-deck .lk-review-title-row > :last-child,
-body.is-mobile .learnkit .lk-review-title-strip-deck .lk-review-title-timer-host {
+body.is-phone .learnkit .lk-review-title-strip-deck .lk-review-title-row > :last-child,
+body.is-phone .learnkit .lk-review-title-strip-deck .lk-review-title-timer-host {
   width: 100%;
 }
 
-body.is-mobile .learnkit .lk-review-title-strip-deck .learnkit-deck-title-actions {
+body.is-phone .learnkit .lk-review-title-strip-deck .learnkit-deck-title-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   width: 100%;
 }
 
-body.is-mobile .learnkit .lk-review-title-strip-deck .learnkit-deck-group-combo {
+body.is-phone .learnkit .lk-review-title-strip-deck .learnkit-deck-group-combo {
   width: auto;
   min-width: 0;
 }
 
-body.is-mobile .learnkit .lk-review-title-strip-deck .learnkit-deck-study-all-btn,
-body.is-mobile .learnkit .lk-review-title-strip-deck .learnkit-deck-group-trigger,
-body.is-mobile .learnkit .lk-review-title-strip-deck .learnkit-deck-group-combo {
+body.is-phone .learnkit .lk-review-title-strip-deck .learnkit-deck-study-all-btn,
+body.is-phone .learnkit .lk-review-title-strip-deck .learnkit-deck-group-trigger,
+body.is-phone .learnkit .lk-review-title-strip-deck .learnkit-deck-group-combo {
   width: 100% ;
 }
 
-body.is-mobile .learnkit .learnkit-deck-left-actions {
+body.is-phone .learnkit .learnkit-deck-left-actions {
   display: flex;
   flex-wrap: wrap;
   width: 100%;
 }
 
-body.is-mobile .learnkit .learnkit-deck-study-all-btn,
-body.is-mobile .learnkit .learnkit-deck-group-combo {
+body.is-phone .learnkit .learnkit-deck-study-all-btn,
+body.is-phone .learnkit .learnkit-deck-group-combo {
   width: 100%;
 }
 
-body.is-mobile .learnkit .learnkit-deck-study-all-btn,
-body.is-mobile .learnkit .learnkit-deck-group-trigger {
+body.is-phone .learnkit .learnkit-deck-study-all-btn,
+body.is-phone .learnkit .learnkit-deck-group-trigger {
   width: 100% ;
   min-width: 0;
   justify-content: center;
 }
 
-body.is-mobile .learnkit .learnkit-deck-expand-buttons {
+body.is-phone .learnkit .learnkit-deck-expand-buttons {
   display: flex;
   width: 100%;
 }
 
-body.is-mobile .learnkit .learnkit-deck-bottom-actions {
+body.is-phone .learnkit .learnkit-deck-bottom-actions {
   justify-content: stretch;
 }
 
-body.is-mobile .learnkit .learnkit-deck-expand-buttons .learnkit-btn-toolbar {
+body.is-phone .learnkit .learnkit-deck-expand-buttons .learnkit-btn-toolbar {
   flex: 1 1 0;
   min-width: 0;
   justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .learnkit .learnkit-deck-controls-row {
+    width: 100%;
+  }
+
+  .learnkit .learnkit-deck-title-actions {
+    width: 100%;
+    justify-content: stretch;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .learnkit .learnkit-deck-group-combo {
+    width: 100%;
+  }
+
+  .learnkit .learnkit-deck-group-popover {
+    width: 100% ;
+  }
+
+  .learnkit .lk-review-title-strip-deck .lk-review-title-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .learnkit .lk-review-title-strip-deck .lk-review-title-row > :first-child {
+    width: 100%;
+    text-align: center;
+  }
+
+  .learnkit .lk-review-title-strip-deck .lk-review-title-row > :last-child,
+  .learnkit .lk-review-title-strip-deck .lk-review-title-timer-host {
+    width: 100%;
+  }
+
+  .learnkit .lk-review-title-strip-deck .learnkit-deck-title-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+
+  .learnkit .lk-review-title-strip-deck .learnkit-deck-group-combo {
+    width: auto;
+    min-width: 0;
+  }
+
+  .learnkit .lk-review-title-strip-deck .learnkit-deck-study-all-btn,
+  .learnkit .lk-review-title-strip-deck .learnkit-deck-group-trigger,
+  .learnkit .lk-review-title-strip-deck .learnkit-deck-group-combo {
+    width: 100% ;
+  }
+
+  .learnkit .learnkit-deck-left-actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .learnkit .learnkit-deck-study-all-btn,
+  .learnkit .learnkit-deck-group-combo {
+    width: 100%;
+  }
+
+  .learnkit .learnkit-deck-study-all-btn,
+  .learnkit .learnkit-deck-group-trigger {
+    width: 100% ;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .learnkit .learnkit-deck-expand-buttons {
+    display: flex;
+    width: 100%;
+  }
+
+  .learnkit .learnkit-deck-bottom-actions {
+    justify-content: stretch;
+  }
+
+  .learnkit .learnkit-deck-expand-buttons .learnkit-btn-toolbar {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 900px) {

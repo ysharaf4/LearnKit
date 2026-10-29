@@ -302,7 +302,8 @@ body.is-phone .learnkit .learnkit-view-content > * {
   padding: var(--lk-shell-padding-mobile);
 }
 
-/* Force title strips into a two-row mobile layout: row 1 text, row 2 controls. */
+/* Force title strips into a two-row mobile layout: row 1 text, row 2 controls.
+   Applies to phones and narrow viewports (e.g. split view <= 640px). */
 body.is-phone .learnkit :is(
   .learnkit-view-title-strip,
   .lk-home-title-strip,
@@ -380,6 +381,87 @@ body.is-phone .learnkit :is(
   .learnkit-coach-wizard-topline
 ) > :first-child > .text-muted-foreground {
   display: none ;
+}
+
+@media (max-width: 640px) {
+  .learnkit :is(
+    .learnkit-view-title-strip,
+    .lk-home-title-strip,
+    .learnkit-analytics-title-strip,
+    .learnkit-exam-generator-title-strip,
+    .learnkit-coach-title-strip,
+    .lk-browser-title-strip,
+    .lk-review-title-strip,
+    .lk-review-title-strip-deck,
+    .learnkit-review-title-strip-deck,
+    .learnkit-note-review-title-strip,
+    .learnkit-settings-title-strip
+  ) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    margin-top: 50px;
+    gap: 8px;
+  }
+
+  .learnkit :is(
+    .lk-home-title-row,
+    .lk-browser-header-row,
+    .lk-review-title-row,
+    .learnkit-review-title-row,
+    .learnkit-note-review-title-row,
+    .learnkit-exam-generator-topline,
+    .learnkit-exam-generator-setup-topline,
+    .learnkit-coach-wizard-topline
+  ) {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center ;
+    row-gap: 8px;
+    align-items: center ;
+  }
+
+  .learnkit :is(
+    .learnkit-exam-generator-topline-right,
+    .learnkit-exam-generator-setup-topline-right,
+    .learnkit-coach-wizard-topline-right,
+    .lk-review-title-timer-host,
+    .learnkit-review-title-timer-host
+  ) {
+    width: 100%;
+    justify-content: center ;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .learnkit :is(
+    .learnkit-view-title-strip,
+    .lk-home-title-strip,
+    .learnkit-analytics-title-strip,
+    .learnkit-exam-generator-title-strip,
+    .learnkit-coach-title-strip,
+    .lk-browser-title-strip,
+    .lk-review-title-strip,
+    .lk-review-title-strip-deck,
+    .learnkit-review-title-strip-deck,
+    .learnkit-note-review-title-strip,
+    .learnkit-settings-title-strip
+  ) :is(
+    .learnkit-inline-sentence,
+    .lk-home-title-row,
+    .lk-browser-header-row,
+    .lk-review-title-row,
+    .learnkit-review-title-row,
+    .learnkit-note-review-title-row,
+    .learnkit-exam-generator-topline,
+    .learnkit-exam-generator-setup-topline,
+    .learnkit-coach-wizard-topline
+  ) > :first-child > .text-muted-foreground {
+    display: none ;
+  }
 }
 
 body.is-phone .learnkit :is(

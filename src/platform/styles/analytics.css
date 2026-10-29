@@ -404,66 +404,119 @@ body.is-phone .learnkit .learnkit-analytics-content-shell > * + * {
   border-bottom-right-radius: var(--radius-md);
 }
 
-/* Daily stats footer controls: mobile-only tidy layout. */
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-bottom {
+/* Daily stats footer controls: phone & narrow-viewport tidy layout.
+   Tablets and desktop retain the horizontal footer layout. */
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-bottom {
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
   align-items: stretch;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-summary {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-summary {
   width: 100%;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-summary .text-sm {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-summary .text-sm {
   font-size: var(--learnkit-font-xs);
   line-height: 1.35;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-center,
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-actions {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-center,
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-actions {
   width: 100%;
   margin-left: 0;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-center {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-center {
   justify-content: flex-start;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-actions {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-actions {
   justify-content: space-between;
   gap: 8px;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-rows-label {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-rows-label {
   display: none;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-export-btn {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-export-btn {
   min-height: 28px;
   padding: 4px 0;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-pager {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-pager {
   margin-left: auto;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-pager-nav {
+body.is-phone .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-pager-nav {
   gap: 4px;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-title-strip .lk-home-title-description,
-body.is-mobile .learnkit .learnkit-analytics-title-strip .text-muted-foreground {
+@media (max-width: 640px) {
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-bottom {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-summary {
+    width: 100%;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-summary .text-sm {
+    font-size: var(--learnkit-font-xs);
+    line-height: 1.35;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-center,
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-center {
+    justify-content: flex-start;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-actions {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-rows-label {
+    display: none;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-export-btn {
+    min-height: 28px;
+    padding: 4px 0;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-pager {
+    margin-left: auto;
+  }
+
+  .learnkit .learnkit-analytics-stats-card .learnkit-analytics-stats-pager-nav {
+    gap: 4px;
+  }
+}
+
+/* Phone & narrow-viewport title strip styling.
+   Tablets and desktop retain visible subtitle on the left, and inline filter buttons on the right. */
+body.is-phone .learnkit .learnkit-analytics-title-strip .lk-home-title-description,
+body.is-phone .learnkit .learnkit-analytics-title-strip .text-muted-foreground {
   display: none ;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-title-strip > .learnkit-analytics-title-row {
+body.is-phone .learnkit .learnkit-analytics-title-strip > .learnkit-analytics-title-row {
   align-items: center;
   justify-content: center;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-title-strip .learnkit-analytics-title-copy {
+body.is-phone .learnkit .learnkit-analytics-title-strip .learnkit-analytics-title-copy {
   width: 100%;
   align-items: center;
   text-align: center;
@@ -480,7 +533,7 @@ body.is-mobile .learnkit .learnkit-analytics-title-strip .learnkit-analytics-tit
   border: 0.5px solid var(--theme-base-45) ;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-buttons {
+body.is-phone .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-buttons {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -488,7 +541,7 @@ body.is-mobile .learnkit .learnkit-analytics-title-strip .learnkit-analytics-fil
   justify-content: center;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-btn {
+body.is-phone .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-btn {
   width: 100%;
   min-width: 0;
   justify-content: center;
@@ -496,8 +549,46 @@ body.is-mobile .learnkit .learnkit-analytics-title-strip .learnkit-analytics-fil
   padding-right: 8px;
 }
 
-body.is-mobile .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-icon {
+body.is-phone .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-icon {
   display: none;
+}
+
+@media (max-width: 640px) {
+  .learnkit .learnkit-analytics-title-strip .lk-home-title-description,
+  .learnkit .learnkit-analytics-title-strip .text-muted-foreground {
+    display: none ;
+  }
+
+  .learnkit .learnkit-analytics-title-strip > .learnkit-analytics-title-row {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .learnkit .learnkit-analytics-title-strip .learnkit-analytics-title-copy {
+    width: 100%;
+    align-items: center;
+    text-align: center;
+  }
+
+  .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-buttons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .learnkit .learnkit-analytics-title-strip .learnkit-analytics-filter-icon {
+    display: none;
+  }
 }
 
 /* Mobile analytics card layout: keep all top-level card groups at 8px spacing. */

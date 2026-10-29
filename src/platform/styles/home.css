@@ -67,10 +67,23 @@
 
 /* ---- Header / greeting ---- */
 
+.learnkit .lk-home-title-subtitle,
 .lk-home-title-subtitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   gap: 0px;
+  min-width: 0;
 }
 
+.learnkit .lk-home-title-subtitle > span,
+.lk-home-title-subtitle > span {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.learnkit input.lk-home-name-input,
 .lk-home-name-input {
   appearance: none;
   background: transparent;
@@ -85,7 +98,16 @@
   margin: 0 2px 0 4px ;
   padding: 0;
   min-width: 1ch;
-  width: min(100%, var(--lk-home-name-width, auto));
+  width: var(--lk-home-name-width, 10ch);
+  max-width: 100%;
+  flex: 0 0 auto;
+}
+
+.learnkit .learnkit-greeting-suffix,
+.learnkit-greeting-suffix {
+  display: inline;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .lk-home-name-input::placeholder {

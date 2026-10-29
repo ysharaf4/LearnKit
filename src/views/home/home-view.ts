@@ -45,25 +45,25 @@ interface GreetingDef {
 }
 
 const TIME_GREETINGS: readonly [GreetingDef, GreetingDef, GreetingDef] = [
-  { key: "ui.home.greeting.goodMorningComma", fallback: "Good morning,", suffix: "!" },
-  { key: "ui.home.greeting.goodAfternoonComma", fallback: "Good afternoon,", suffix: "!" },
-  { key: "ui.home.greeting.goodEveningComma", fallback: "Good evening,", suffix: "!" },
+  { key: "ui.home.greeting.goodMorningComma", fallback: "Good morning,", suffix: "" },
+  { key: "ui.home.greeting.goodAfternoonComma", fallback: "Good afternoon,", suffix: "" },
+  { key: "ui.home.greeting.goodEveningComma", fallback: "Good evening,", suffix: "" },
 ];
 
 const READY_TO_LEARN: GreetingDef = {
-  key: "ui.home.greeting.readyToLearnComma", fallback: "Ready to learn,", suffix: "?",
+  key: "ui.home.greeting.readyToLearnComma", fallback: "Ready to learn,", suffix: "",
 };
 
 const OTHER_GREETINGS: readonly GreetingDef[] = [
-  { key: "ui.home.greeting.welcomeBackComma", fallback: "Welcome back,", suffix: "!" },
-  { key: "ui.home.greeting.timeToStudyComma", fallback: "Time to study,", suffix: "!" },
-  { key: "ui.home.greeting.letsKeepGoingComma", fallback: "Let's keep going,", suffix: "!" },
-  { key: "ui.home.greeting.stayCuriousComma", fallback: "Stay curious,", suffix: "!" },
-  { key: null, fallback: "Hej,", suffix: "!" },
-  { key: null, fallback: "Kia ora,", suffix: "!" },
-  { key: null, fallback: "Salut,", suffix: "!" },
-  { key: "ui.home.greeting.backAtItComma", fallback: "Back at it,", suffix: "!" },
-  { key: "ui.home.greeting.knowledgeAwaitsComma", fallback: "Knowledge awaits,", suffix: "!" },
+  { key: "ui.home.greeting.welcomeBackComma", fallback: "Welcome back,", suffix: "" },
+  { key: "ui.home.greeting.timeToStudyComma", fallback: "Time to study,", suffix: "" },
+  { key: "ui.home.greeting.letsKeepGoingComma", fallback: "Let's keep going,", suffix: "" },
+  { key: "ui.home.greeting.stayCuriousComma", fallback: "Stay curious,", suffix: "" },
+  { key: null, fallback: "Hej,", suffix: "" },
+  { key: null, fallback: "Kia ora,", suffix: "" },
+  { key: null, fallback: "Salut,", suffix: "" },
+  { key: "ui.home.greeting.backAtItComma", fallback: "Back at it,", suffix: "" },
+  { key: "ui.home.greeting.knowledgeAwaitsComma", fallback: "Knowledge awaits,", suffix: "" },
 ];
 
 function pickHomeGreeting(): GreetingDef {
@@ -338,7 +338,7 @@ export class LearnKitHomeView extends ItemView {
       : greeting.fallback;
 
     {
-      subtitleRow.createSpan({ text: greetingPrefix });
+      subtitleRow.createSpan({ text: greetingPrefix, cls: "lk-home-greeting-prefix shrink-0 whitespace-nowrap" });
 
       const nameInput = makeEl("input");
       nameInput.className = "lk-home-name-input min-w-[1ch] shrink-0 grow-0 basis-auto max-w-full border-0 p-0 m-0 shadow-none text-[0.95rem] font-normal leading-[1.3] text-muted-foreground bg-transparent";
@@ -348,10 +348,12 @@ export class LearnKitHomeView extends ItemView {
       nameInput.value = trimmedName;
       subtitleRow.appendChild(nameInput);
 
-      const greetingSuffixEl = makeEl("div");
-      greetingSuffixEl.className = "learnkit-greeting-suffix -ml-1 text-[0.95rem] font-normal leading-[1.3] text-muted-foreground";
-      greetingSuffixEl.textContent = greeting.suffix;
-      subtitleRow.appendChild(greetingSuffixEl);
+      if (greeting.suffix) {
+        const greetingSuffixEl = makeEl("span");
+        greetingSuffixEl.className = "learnkit-greeting-suffix shrink-0 whitespace-nowrap -ml-1 text-[0.95rem] font-normal leading-[1.3] text-muted-foreground";
+        greetingSuffixEl.textContent = greeting.suffix;
+        subtitleRow.appendChild(greetingSuffixEl);
+      }
 
       const nameSizer = makeEl("span");
       nameSizer.className = "learnkit-name-sizer absolute invisible whitespace-pre pointer-events-none h-0 overflow-hidden text-[0.95rem] font-normal leading-[1.3] text-muted-foreground";
@@ -375,8 +377,10 @@ export class LearnKitHomeView extends ItemView {
         const borderLeft = Number.parseFloat(computed.borderLeftWidth || "0") || 0;
         const borderRight = Number.parseFloat(computed.borderRightWidth || "0") || 0;
         const chromeWidth = paddingLeft + paddingRight + borderLeft + borderRight;
-        const next = Math.max(1, Math.round(measured + chromeWidth));
-        setCssProps(nameInput, "--lk-home-name-width", `${next}px`);
+        const fallbackPx = Math.max(1, (value.length || 8) * 10);
+        const nextPx = measured > 0 ? Math.round(measured + chromeWidth) : fallbackPx;
+        setCssProps(nameInput, "--lk-home-name-width", `${nextPx}px`);
+        nameInput.style.width = `${nextPx}px`;
       };
 
       const triggerNameLimitShake = () => {
@@ -443,6 +447,7 @@ export class LearnKitHomeView extends ItemView {
             })
           : null;
       if (this._nameObserver) this._nameObserver.observe(title);
+      syncNameWidth();
       window.requestAnimationFrame(() => syncNameWidth());
 
       nameInput.addEventListener("input", () => {
