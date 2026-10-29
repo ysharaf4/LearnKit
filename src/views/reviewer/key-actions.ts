@@ -43,6 +43,7 @@ export const REVIEWER_IMPLEMENTED_KEYS: readonly string[] = [
   "U",
   "M",
   "O",
+  "R",
 ];
 
 /** Minimal shape of a keyboard event we care about (keeps this module pure). */

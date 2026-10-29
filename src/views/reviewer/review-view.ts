@@ -796,6 +796,10 @@ export class LearnKitReviewerView extends ItemView {
 
     const src = this.app.vault.getResourcePath(file);
     const audioEl = new Audio(src);
+    const rate = this.plugin.settings?.audio?.rate;
+    if (typeof rate === "number" && Number.isFinite(rate) && rate > 0) {
+      audioEl.playbackRate = Math.max(0.5, Math.min(2.0, rate));
+    }
     this._activeAttachedAudio = audioEl;
 
     const cleanup = () => {
@@ -2434,6 +2438,13 @@ export class LearnKitReviewerView extends ItemView {
       ev.stopPropagation();
       closeMoreMenuImpl(this);
       this.openEditModalForCurrentCard();
+      return;
+    }
+
+    if (k === "r") {
+      ev.preventDefault();
+      ev.stopPropagation();
+      this._replayFront();
       return;
     }
 

@@ -58,6 +58,7 @@ export function getShortcutGroups(
         { keys: ["U"], label: tx("ui.shortcuts.undo", "Undo last review") },
         { keys: ["M"], label: tx("ui.shortcuts.moreMenu", "More actions") },
         { keys: ["O"], label: tx("ui.shortcuts.openInNote", "Jump to note") },
+        { keys: ["R"], label: tx("ui.shortcuts.replayAudio", "Replay audio") },
       ],
     },
   ];

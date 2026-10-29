@@ -1392,9 +1392,10 @@ export function renderSessionMode(args: Args) {
       const btn = makeEl("button");
       btn.type = "button";
       btn.className = "btn-icon learnkit-tts-replay-btn";
-      const tooltip = hasAttachedAudio
+      const baseTooltip = hasAttachedAudio
         ? t(args.interfaceLanguage, "ui.common.playAudio", "Play audio attachment")
         : t(args.interfaceLanguage, "ui.reviewer.tts.readAloud", "Read {text} aloud", { text: text.toLowerCase() });
+      const tooltip = `${baseTooltip} (R)`;
       btn.setAttribute("aria-label", tooltip);
       btn.setAttribute("data-tooltip-position", "top");
       if (ttsField) btn.setAttribute("data-tts-field", ttsField);

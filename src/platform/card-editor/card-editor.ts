@@ -844,15 +844,21 @@ export function createAudioPickerField(
   chipRow.className = "flex items-center gap-2 flex-wrap min-h-[2rem]";
 
   let chooseBtn: HTMLButtonElement;
+  let currentPreviewAudio: HTMLAudioElement | null = null;
 
   const renderChip = (ref: string) => {
     chipRow.textContent = "";
+    if (currentPreviewAudio) {
+      currentPreviewAudio.pause();
+      currentPreviewAudio = null;
+    }
     if (!ref) {
       chipRow.appendChild(chooseBtn);
       return;
     }
     const chip = makeEl("span", doc);
-    chip.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground max-w-full";
+    chip.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground cursor-pointer max-w-full";
+    chip.title = `${ref} (click to preview)`;
     const icon = makeEl("span", doc);
     icon.className = "shrink-0 inline-flex items-center [&_svg]:size-3";
     setIcon(icon, "volume-2");
@@ -867,9 +873,65 @@ export function createAudioPickerField(
     setIcon(removeBtn, "x");
     removeBtn.addEventListener("click", (ev) => {
       ev.preventDefault();
+      ev.stopPropagation();
+      if (currentPreviewAudio) {
+        currentPreviewAudio.pause();
+        currentPreviewAudio = null;
+      }
       hiddenInput.value = "";
       renderChip("");
     });
+
+    chip.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (currentPreviewAudio && !currentPreviewAudio.paused) {
+        currentPreviewAudio.pause();
+        currentPreviewAudio = null;
+        setIcon(icon, "volume-2");
+        return;
+      }
+      if (currentPreviewAudio) {
+        currentPreviewAudio.pause();
+        currentPreviewAudio = null;
+      }
+      try {
+        const clean = ref.trim().replace(/^!\[\[/, "").replace(/\]\]$/, "");
+        let file = plugin.app.vault.getAbstractFileByPath(clean);
+        if (!(file instanceof TFile)) {
+          file = plugin.app.metadataCache.getFirstLinkpathDest(clean, "") ?? null;
+        }
+        if (file instanceof TFile && plugin.app.vault.getResourcePath) {
+          const src = plugin.app.vault.getResourcePath(file);
+          const a = new Audio(src);
+          const rate = plugin.settings?.audio?.rate ?? 1.0;
+          a.playbackRate = Math.max(0.5, Math.min(2.0, rate));
+          currentPreviewAudio = a;
+          setIcon(icon, "square");
+          a.onended = () => {
+            if (currentPreviewAudio === a) {
+              currentPreviewAudio = null;
+              setIcon(icon, "volume-2");
+            }
+          };
+          a.onerror = () => {
+            if (currentPreviewAudio === a) {
+              currentPreviewAudio = null;
+              setIcon(icon, "volume-2");
+            }
+          };
+          a.play().catch(() => {
+            if (currentPreviewAudio === a) {
+              currentPreviewAudio = null;
+              setIcon(icon, "volume-2");
+            }
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    });
+
     chip.appendChild(icon);
     chip.appendChild(name);
     chip.appendChild(removeBtn);
