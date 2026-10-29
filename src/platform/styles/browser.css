@@ -61,6 +61,7 @@
   background-color: transparent;
   border: 0;
   border-radius: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .learnkit .lk-browser-view {
@@ -769,7 +770,8 @@
 .learnkit .lk-browser-table {
   table-layout: fixed;
   position: relative;
-  max-width: 100%;
+  min-width: 100%;
+  width: max-content;
   box-sizing: border-box;
   border-collapse: separate;
   border-spacing: 0;
@@ -1360,21 +1362,29 @@ body.is-mobile .learnkit .lk-browser-controls-row {
   flex: 1 1 100%;
 }
 
-body.is-mobile .learnkit .lk-browser-controls-row {
+body.is-phone .learnkit .lk-browser-controls-row {
   align-items: stretch;
 }
 
-body.is-mobile .learnkit .lk-browser-density-toggle {
+@media (max-width: 640px) {
+  .learnkit .lk-browser-controls-row {
+    align-items: stretch;
+  }
+}
+
+/* Mobile title strip: Deck Browser title on top, two 50% action buttons below.
+   Applied to phones and narrow viewports (e.g. split view <= 640px).
+   Tablets and wider viewports keep the horizontal title row layout. */
+body.is-phone .learnkit .lk-browser-density-toggle {
   width: 100%;
   justify-content: stretch;
 }
 
-body.is-mobile .learnkit .lk-browser-density-btn {
+body.is-phone .learnkit .lk-browser-density-btn {
   min-width: 0;
   flex: 1 1 calc((100% - 8px) / 2);
 }
 
-/* Mobile title strip: Deck Browser title on top, two 50% action buttons below. */
 body.is-phone .learnkit .lk-browser-title-strip > .learnkit-inline-sentence {
   display: flex;
   flex-direction: column;
@@ -1409,6 +1419,54 @@ body.is-phone .learnkit .lk-browser-title-strip > .learnkit-inline-sentence > .l
   min-width: 0;
   flex: 0 0 auto;
   justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .learnkit .lk-browser-density-toggle {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .learnkit .lk-browser-density-btn {
+    min-width: 0;
+    flex: 1 1 calc((100% - 8px) / 2);
+  }
+
+  .learnkit .lk-browser-title-strip > .learnkit-inline-sentence {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .learnkit .lk-browser-title-strip > .learnkit-inline-sentence > :first-child {
+    width: 100%;
+    flex: 0 0 auto;
+    align-items: center;
+    text-align: center;
+  }
+
+  .learnkit .lk-browser-title-strip .lk-browser-title-strip-label {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .learnkit .lk-browser-title-strip > .learnkit-inline-sentence > .lk-browser-density-toggle {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    justify-content: stretch;
+    align-self: stretch;
+  }
+
+  .learnkit .lk-browser-title-strip > .learnkit-inline-sentence > .lk-browser-density-toggle .lk-browser-density-btn {
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+    justify-content: center;
+  }
 }
 
 /* ---- Browser toolbar action buttons ---- */
@@ -1515,30 +1573,32 @@ body.is-phone .learnkit .lk-browser-title-strip > .learnkit-inline-sentence > .l
   border-color: var(--color-base-35) ;
 }
 
-body.is-mobile .learnkit .lk-browser-filter {
+/* Compact filter dropdowns & toolbar action buttons for phones & narrow viewports.
+   Tablets (iPads) and wider screens keep inline, multi-column wrapped filters. */
+body.is-phone .learnkit .lk-browser-filter {
   width: 100%;
   min-width: 0;
   flex: 1 1 100%;
 }
 
-body.is-mobile .learnkit .lk-browser-filter-columns-wrap {
+body.is-phone .learnkit .lk-browser-filter-columns-wrap {
   width: calc((100% - 8px) / 2);
   min-width: 0;
   flex: 1 1 calc((100% - 8px) / 2);
 }
 
-body.is-mobile .learnkit .lk-browser-filter > button,
-body.is-mobile .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button {
+body.is-phone .learnkit .lk-browser-filter > button,
+body.is-phone .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button {
   width: 100%;
   min-width: 0;
   justify-content: space-between;
 }
 
-body.is-mobile .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button {
+body.is-phone .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button {
   justify-content: center;
 }
 
-body.is-mobile .learnkit .lk-browser-action-btn {
+body.is-phone .learnkit .lk-browser-action-btn {
   min-width: 0;
   flex: 1 1 calc((100% - 16px) / 3);
   width: calc((100% - 16px) / 3);
@@ -1546,46 +1606,121 @@ body.is-mobile .learnkit .lk-browser-action-btn {
   white-space: nowrap;
 }
 
-body.is-mobile .learnkit .lk-browser-action-btn-suspend,
-body.is-mobile .learnkit .lk-browser-action-btn-edit,
-body.is-mobile .learnkit .lk-browser-action-btn-reset {
+body.is-phone .learnkit .lk-browser-action-btn-suspend,
+body.is-phone .learnkit .lk-browser-action-btn-edit,
+body.is-phone .learnkit .lk-browser-action-btn-reset {
   width: calc((100% - 16px) / 3);
 }
 
-body.is-mobile .learnkit .lk-browser-filter-columns-wrap,
-body.is-mobile .learnkit .lk-browser-action-btn-suspend {
+body.is-phone .learnkit .lk-browser-filter-columns-wrap,
+body.is-phone .learnkit .lk-browser-action-btn-suspend {
   width: calc((100% - 8px) / 2);
   min-width: 0;
   flex: 1 1 calc((100% - 8px) / 2);
 }
 
-body.is-mobile .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button,
-body.is-mobile .learnkit .lk-browser-action-btn-suspend {
+body.is-phone .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button,
+body.is-phone .learnkit .lk-browser-action-btn-suspend {
   justify-content: center ;
   gap: 6px ;
 }
 
-body.is-mobile .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button :is(
+body.is-phone .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button :is(
   [class*="svg-icon"],
   svg
 ),
-body.is-mobile .learnkit .lk-browser-action-btn-suspend :is(
+body.is-phone .learnkit .lk-browser-action-btn-suspend :is(
   [class*="svg-icon"],
   svg
 ) {
   margin: 0 ;
 }
 
-body.is-mobile .learnkit .lk-browser-action-btn-suspend {
+body.is-phone .learnkit .lk-browser-action-btn-suspend {
   order: 4;
 }
 
-body.is-mobile .learnkit .lk-browser-action-btn-reset {
+body.is-phone .learnkit .lk-browser-action-btn-reset {
   order: 5;
 }
 
-body.is-mobile .learnkit .lk-browser-action-btn-edit {
+body.is-phone .learnkit .lk-browser-action-btn-edit {
   order: 6;
+}
+
+@media (max-width: 640px) {
+  .learnkit .lk-browser-filter {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .learnkit .lk-browser-filter-columns-wrap {
+    width: calc((100% - 8px) / 2);
+    min-width: 0;
+    flex: 1 1 calc((100% - 8px) / 2);
+  }
+
+  .learnkit .lk-browser-filter > button,
+  .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button {
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+  }
+
+  .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button {
+    justify-content: center;
+  }
+
+  .learnkit .lk-browser-action-btn {
+    min-width: 0;
+    flex: 1 1 calc((100% - 16px) / 3);
+    width: calc((100% - 16px) / 3);
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .learnkit .lk-browser-action-btn-suspend,
+  .learnkit .lk-browser-action-btn-edit,
+  .learnkit .lk-browser-action-btn-reset {
+    width: calc((100% - 16px) / 3);
+  }
+
+  .learnkit .lk-browser-filter-columns-wrap,
+  .learnkit .lk-browser-action-btn-suspend {
+    width: calc((100% - 8px) / 2);
+    min-width: 0;
+    flex: 1 1 calc((100% - 8px) / 2);
+  }
+
+  .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button,
+  .learnkit .lk-browser-action-btn-suspend {
+    justify-content: center ;
+    gap: 6px ;
+  }
+
+  .learnkit .lk-browser-filter-columns-wrap .lk-browser-filter > button :is(
+    [class*="svg-icon"],
+    svg
+  ),
+  .learnkit .lk-browser-action-btn-suspend :is(
+    [class*="svg-icon"],
+    svg
+  ) {
+    margin: 0 ;
+  }
+
+  .learnkit .lk-browser-action-btn-suspend {
+    order: 4;
+  }
+
+  .learnkit .lk-browser-action-btn-reset {
+    order: 5;
+  }
+
+  .learnkit .lk-browser-action-btn-edit {
+    order: 6;
+  }
 }
 
 body.is-mobile .learnkit .lk-browser-action-btn [class*="svg-icon"],
@@ -1608,12 +1743,22 @@ body.is-mobile .learnkit .lk-browser-controls-row :is(
   gap: 6px ;
 }
 
-body.is-mobile .learnkit .lk-browser-controls-row .lk-browser-filter .learnkit-btn-toolbar {
+body.is-phone .learnkit .lk-browser-controls-row .lk-browser-filter .learnkit-btn-toolbar {
   justify-content: space-between;
 }
 
-body.is-mobile .learnkit .lk-browser-controls-row .lk-browser-filter-columns-wrap .lk-browser-filter .learnkit-btn-toolbar {
+body.is-phone .learnkit .lk-browser-controls-row .lk-browser-filter-columns-wrap .lk-browser-filter .learnkit-btn-toolbar {
   justify-content: center ;
+}
+
+@media (max-width: 640px) {
+  .learnkit .lk-browser-controls-row .lk-browser-filter .learnkit-btn-toolbar {
+    justify-content: space-between;
+  }
+
+  .learnkit .lk-browser-controls-row .lk-browser-filter-columns-wrap .lk-browser-filter .learnkit-btn-toolbar {
+    justify-content: center ;
+  }
 }
 
 body.is-mobile .learnkit .lk-browser-view .table thead th,
