@@ -131,6 +131,30 @@ AU | media/clip.m4a |
       setIconSpy.mockRestore();
     });
 
+    it("renders interactive preview play button and remove button on audio chip", () => {
+      const mockPlugin = {
+        app: {
+          vault: { getAbstractFileByPath: vi.fn(), getResourcePath: vi.fn() },
+          metadataCache: { getFirstLinkpathDest: vi.fn() },
+        },
+        settings: { audio: { rate: 1.25 } },
+      } as any;
+
+      const { element, hiddenInput } = createAudioPickerField("recordings/test.mp3", mockPlugin);
+      expect(hiddenInput.value).toBe("recordings/test.mp3");
+
+      const playBtn = element.querySelector("button[aria-label='Play preview']") as HTMLButtonElement | null;
+      expect(playBtn).not.toBeNull();
+      expect(playBtn?.title).toBe("Play preview");
+
+      const removeBtn = element.querySelector("button[aria-label='Remove audio']") as HTMLButtonElement | null;
+      expect(removeBtn).not.toBeNull();
+
+      // Clicking remove should clear hidden input
+      removeBtn?.click();
+      expect(hiddenInput.value).toBe("");
+    });
+
     it("bindTtsPlayingState sets up idle speaker, equalizer wave, and stop icons", async () => {
       const { bindTtsPlayingState, markTtsButtonActive, clearActiveTtsButton } = await import(
         "../src/platform/integrations/tts/tts-service"

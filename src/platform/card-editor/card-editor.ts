@@ -857,38 +857,49 @@ export function createAudioPickerField(
       return;
     }
     const chip = makeEl("span", doc);
-    chip.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground cursor-pointer max-w-full";
-    chip.title = `${ref} (click to preview)`;
-    const icon = makeEl("span", doc);
-    icon.className = "shrink-0 inline-flex items-center [&_svg]:size-3";
-    setIcon(icon, "volume-2");
+    chip.className = "learnkit-audio-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-muted text-muted-foreground border border-border/50 max-w-full transition-colors";
+
+    const playBtn = makeEl("button", doc) as HTMLButtonElement;
+    playBtn.type = "button";
+    playBtn.className = "learnkit-audio-chip-btn learnkit-btn-unstyled shrink-0 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground cursor-pointer";
+    playBtn.style.cssText = "background:transparent;border:none;box-shadow:none;padding:0;margin:0;width:18px;height:18px;min-height:0;min-width:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;";
+    playBtn.setAttribute("aria-label", "Play preview");
+    playBtn.title = "Play preview";
+    setIcon(playBtn, "volume-2");
+
     const name = makeEl("span", doc);
-    name.className = "truncate max-w-[200px]";
+    name.className = "truncate max-w-[200px] cursor-pointer hover:text-foreground select-none";
     name.textContent = audioRefBasename(ref);
-    name.title = ref;
+    name.title = `${ref} (click to preview)`;
+
     const removeBtn = makeEl("button", doc) as HTMLButtonElement;
     removeBtn.type = "button";
-    removeBtn.className = "shrink-0 inline-flex items-center [&_svg]:size-3 text-muted-foreground hover:text-foreground ml-1";
+    removeBtn.className = "learnkit-audio-chip-remove learnkit-btn-unstyled shrink-0 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive ml-0.5 cursor-pointer";
+    removeBtn.style.cssText = "background:transparent;border:none;box-shadow:none;padding:0;margin:0;width:18px;height:18px;min-height:0;min-width:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;";
     removeBtn.setAttribute("aria-label", "Remove audio");
+    removeBtn.title = "Remove audio";
     setIcon(removeBtn, "x");
-    removeBtn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (currentPreviewAudio) {
-        currentPreviewAudio.pause();
-        currentPreviewAudio = null;
-      }
-      hiddenInput.value = "";
-      renderChip("");
-    });
 
-    chip.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
+    const setPlayingState = (isPlaying: boolean) => {
+      chip.classList.toggle("is-playing", isPlaying);
+      if (isPlaying) {
+        setIcon(playBtn, "square");
+        playBtn.setAttribute("aria-label", "Stop preview");
+        playBtn.title = "Stop preview";
+        chip.classList.add("text-foreground", "bg-accent/20");
+      } else {
+        setIcon(playBtn, "volume-2");
+        playBtn.setAttribute("aria-label", "Play preview");
+        playBtn.title = "Play preview";
+        chip.classList.remove("text-foreground", "bg-accent/20");
+      }
+    };
+
+    const togglePreview = () => {
       if (currentPreviewAudio && !currentPreviewAudio.paused) {
         currentPreviewAudio.pause();
         currentPreviewAudio = null;
-        setIcon(icon, "volume-2");
+        setPlayingState(false);
         return;
       }
       if (currentPreviewAudio) {
@@ -907,32 +918,64 @@ export function createAudioPickerField(
           const rate = plugin.settings?.audio?.rate ?? 1.0;
           a.playbackRate = Math.max(0.5, Math.min(2.0, rate));
           currentPreviewAudio = a;
-          setIcon(icon, "square");
+          setPlayingState(true);
+          a.ontimeupdate = () => {
+            if (!wrap.isConnected && currentPreviewAudio === a) {
+              a.pause();
+              currentPreviewAudio = null;
+            }
+          };
           a.onended = () => {
             if (currentPreviewAudio === a) {
               currentPreviewAudio = null;
-              setIcon(icon, "volume-2");
+              setPlayingState(false);
             }
           };
           a.onerror = () => {
             if (currentPreviewAudio === a) {
               currentPreviewAudio = null;
-              setIcon(icon, "volume-2");
+              setPlayingState(false);
             }
+            new Notice("Failed to play audio: " + clean);
           };
           a.play().catch(() => {
             if (currentPreviewAudio === a) {
               currentPreviewAudio = null;
-              setIcon(icon, "volume-2");
+              setPlayingState(false);
             }
           });
+        } else {
+          new Notice("Audio file not found: " + clean);
         }
       } catch {
         /* ignore */
       }
+    };
+
+    playBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      togglePreview();
     });
 
-    chip.appendChild(icon);
+    name.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      togglePreview();
+    });
+
+    removeBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (currentPreviewAudio) {
+        currentPreviewAudio.pause();
+        currentPreviewAudio = null;
+      }
+      hiddenInput.value = "";
+      renderChip("");
+    });
+
+    chip.appendChild(playBtn);
     chip.appendChild(name);
     chip.appendChild(removeBtn);
     chipRow.appendChild(chip);
@@ -942,7 +985,7 @@ export function createAudioPickerField(
   chooseBtn.type = "button";
   chooseBtn.className = "learnkit-btn-toolbar h-7 px-2 text-sm inline-flex items-center justify-center gap-1";
   const btnIcon = makeEl("span", doc);
-  btnIcon.className = "shrink-0 inline-flex items-center [&_svg]:size-3";
+  btnIcon.className = "shrink-0 inline-flex items-center [&_svg]:!size-3.5 [&_.svg-icon]:!size-3.5";
   setIcon(btnIcon, "paperclip");
   chooseBtn.appendChild(btnIcon);
   chooseBtn.appendChild(doc.createTextNode(" Choose audio"));
