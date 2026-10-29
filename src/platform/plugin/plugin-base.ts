@@ -20,6 +20,7 @@ import type { ReminderEngine } from "../../views/reminders/reminder-engine";
 import type { LearnKitAssistantPopup } from "../../views/study-assistant/popup/assistant-popup";
 import type { CoachPlanSqlite } from "../core/coach-plan-sqlite";
 import type { CardState } from "../../engine/scheduler/scheduler";
+import type LearnKitPlugin from "../../main";
 
 export interface LearnKitPluginBase {
   // -- Core methods (provided by mixin chain) --
@@ -169,6 +170,10 @@ export class LearnKitPluginBase extends Plugin {
   // Narrow Plugin's `onload(): Promise<void> | void` so that the
   // mixin chain sees a consistent `Promise<void>` return type.
   async onload(): Promise<void> { }
+
+  get asPlugin(): LearnKitPlugin {
+    return this as unknown as LearnKitPlugin;
+  }
 }
 
 // Backwards-compatible alias retained for Phase 1 rename safety.

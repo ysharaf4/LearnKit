@@ -215,7 +215,7 @@ export class LearnKitAssistantPopup {
   private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
 
   // Debounce timer for chat saves
-  private _saveChatTimer: ReturnType<typeof setTimeout> | null = null;
+  private _saveChatTimer: number | ReturnType<typeof setTimeout> | null = null;
   private _reviewDepthMenuAbort: AbortController | null = null;
   private _headerMenuOpen = false;
   private _headerMenuAbort: AbortController | null = null;
@@ -224,26 +224,26 @@ export class LearnKitAssistantPopup {
   private _suppressToggleUntil = 0;
   private _maxObservedPopupHeight = 0;
   private _popupHeightFrame: number | null = null;
-  private _popupCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private _popupCloseTimer: number | ReturnType<typeof setTimeout> | null = null;
   private _userResizedWidth: number | null = null;
   private _userResizedHeight: number | null = null;
   private _resizeCleanup: (() => void) | null = null;
   private _suspendPopupAutoClose = false;
   private _isTriggerReplyNotificationActive = false;
-  private _triggerReplyRevealTimer: ReturnType<typeof setTimeout> | null = null;
-  private _triggerReplyBounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _triggerReplyRevealTimer: number | ReturnType<typeof setTimeout> | null = null;
+  private _triggerReplyBounceTimer: number | ReturnType<typeof setTimeout> | null = null;
 
   // Voice chat state
   private _isListening = false;
   private _isTranscribing = false;
   private _mediaRecorder: MediaRecorder | null = null;
   private _audioChunks: Blob[] = [];
-  private _voiceSilenceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _voiceSilenceTimer: number | ReturnType<typeof setTimeout> | null = null;
   private _voiceMeterStream: MediaStream | null = null;
   private _voiceMeterAudioContext: AudioContext | null = null;
   private _voiceMeterAnalyser: AnalyserNode | null = null;
   private _voiceMeterFrame: number | null = null;
-  private _voiceAutoStopTimer: ReturnType<typeof setTimeout> | null = null;
+  private _voiceAutoStopTimer: number | ReturnType<typeof setTimeout> | null = null;
   private _voiceStopRequested = false;
   private _recognition: SpeechRecognitionLike | null = null;
 
@@ -251,9 +251,9 @@ export class LearnKitAssistantPopup {
   private _isTtsSpeaking = false;
   private _ttsPaused = false;
   private _activeTtsMessageIndex: number | null = null;
-  private _ttsPollTimer: ReturnType<typeof setTimeout> | null = null;
-  private _ttsStartDelayTimer: ReturnType<typeof setTimeout> | null = null;
-  private _ttsCollapseTimer: ReturnType<typeof setTimeout> | null = null;
+  private _ttsPollTimer: number | ReturnType<typeof setTimeout> | null = null;
+  private _ttsStartDelayTimer: number | ReturnType<typeof setTimeout> | null = null;
+  private _ttsCollapseTimer: number | ReturnType<typeof setTimeout> | null = null;
   private _ttsFinishInteractionCleanup: (() => void) | null = null;
   private _pendingTtsMessageIndex: number | null = null;
   private _ttsStartGraceUntil = 0;

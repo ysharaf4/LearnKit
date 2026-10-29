@@ -172,7 +172,7 @@ export function WithLifecycleMethods<T extends Constructor<LearnKitPluginBase>>(
      * cached audio).
      */
     async _runCleanupOrphanedCards(): Promise<void> {
-      const orphans = findOrphanedCards(this);
+      const orphans = findOrphanedCards(this.asPlugin);
 
       if (!orphans.length) {
         new Notice(this._tx("ui.notice.orphanCleanup.none", "No orphaned flashcards found."));
@@ -186,11 +186,11 @@ export function WithLifecycleMethods<T extends Constructor<LearnKitPluginBase>>(
 
       new ConfirmCleanupOrphanedCardsModal(
         this.app,
-        this,
+        this.asPlugin,
         orphans.length,
         Array.from(byNote.entries()).map(([path, count]) => ({ path, count })),
         async () => {
-          const result = await pruneOrphanedCards(this);
+          const result = await pruneOrphanedCards(this.asPlugin);
           await this.store.persist();
 
           if (result.skippedReason === "vault-empty") {
@@ -295,12 +295,12 @@ export function WithLifecycleMethods<T extends Constructor<LearnKitPluginBase>>(
 
       this._addCommand("import-anki", tx("ui.command.open.importAnki", "Import from Anki"), async () => {
         const { AnkiImportModal } = await import("../modals/anki-import-modal");
-        new AnkiImportModal(this).open();
+        new AnkiImportModal(this.asPlugin).open();
       });
 
       this._addCommand("export-anki", tx("ui.command.open.exportAnki", "Export to Anki (.apkg)"), async () => {
         const { AnkiExportModal } = await import("../modals/anki-export-modal");
-        new AnkiExportModal(this).open();
+        new AnkiExportModal(this.asPlugin).open();
       });
     }
 
@@ -391,34 +391,36 @@ export function WithLifecycleMethods<T extends Constructor<LearnKitPluginBase>>(
 
         setDelimiter(this.settings.indexing.delimiter ?? "|");
 
-        await reconcileAllDbsFromVaultSync(this);
+        const plugin = this.asPlugin;
 
-        const hasSqlite = await isSqliteDatabasePresent(this);
+        await reconcileAllDbsFromVaultSync(plugin);
+
+        const hasSqlite = await isSqliteDatabasePresent(plugin);
         const hasLegacyStore = isPlainObject(rootObj.store);
 
         if (hasSqlite) {
-          const sqliteStore = new SqliteStore(this);
+          const sqliteStore = new SqliteStore(plugin);
           await sqliteStore.open();
           this.store = sqliteStore;
         } else if (hasLegacyStore) {
           // Legacy JSON → migrate to SQLite
-          const migratedToSqlite = await migrateJsonToSqlite(this, rootObj);
+          const migratedToSqlite = await migrateJsonToSqlite(plugin, rootObj);
           if (migratedToSqlite) {
-            const sqliteStore = new SqliteStore(this);
+            const sqliteStore = new SqliteStore(plugin);
             await sqliteStore.open();
             this.store = sqliteStore;
           } else {
-            this.store = new JsonStore(this);
+            this.store = new JsonStore(plugin);
             this.store.load(rootObj);
           }
         } else {
           // Fresh install — create empty SQLite store
-          const sqliteStore = new SqliteStore(this);
+          const sqliteStore = new SqliteStore(plugin);
           await sqliteStore.open();
           this.store = sqliteStore;
         }
 
-        this._reminderEngine = new ReminderEngine(this);
+        this._reminderEngine = new ReminderEngine(plugin);
         this._registerReminderDevConsoleCommands();
         this._registerStudyAssistantDevConsoleCommands();
 
@@ -428,37 +430,37 @@ export function WithLifecycleMethods<T extends Constructor<LearnKitPluginBase>>(
           );
         }
 
-        registerReadingViewPrettyCards(this);
+        registerReadingViewPrettyCards(plugin);
 
         // CM6 extension: inline diff decorations for AI-proposed note edits
         this.registerEditorExtension(editDecorationExtension);
 
-        this.registerView(VIEW_TYPE_REVIEWER, (leaf: WorkspaceLeaf) => new LearnKitReviewerView(leaf, this));
-        this.registerView(VIEW_TYPE_NOTE_REVIEW, (leaf: WorkspaceLeaf) => new LearnKitNoteReviewView(leaf, this));
-        this.registerView(VIEW_TYPE_WIDGET, (leaf: WorkspaceLeaf) => new LearnKitWidgetView(leaf, this));
-        this.registerView(VIEW_TYPE_STUDY_ASSISTANT, (leaf: WorkspaceLeaf) => new LearnKitStudyAssistantView(leaf, this));
-        this.registerView(VIEW_TYPE_BROWSER, (leaf: WorkspaceLeaf) => new LearnKitCardBrowserView(leaf, this));
-        this.registerView(VIEW_TYPE_ANALYTICS, (leaf: WorkspaceLeaf) => new LearnKitAnalyticsView(leaf, this));
-        this.registerView(VIEW_TYPE_HOME, (leaf: WorkspaceLeaf) => new LearnKitHomeView(leaf, this));
-        this.registerView(VIEW_TYPE_SETTINGS, (leaf: WorkspaceLeaf) => new LearnKitSettingsView(leaf, this));
-        this.registerView(VIEW_TYPE_EXAM_GENERATOR, (leaf: WorkspaceLeaf) => new LearnKitExamGeneratorView(leaf, this));
-        this.registerView(VIEW_TYPE_COACH, (leaf: WorkspaceLeaf) => new LearnKitCoachView(leaf, this));
+        this.registerView(VIEW_TYPE_REVIEWER, (leaf: WorkspaceLeaf) => new LearnKitReviewerView(leaf, plugin));
+        this.registerView(VIEW_TYPE_NOTE_REVIEW, (leaf: WorkspaceLeaf) => new LearnKitNoteReviewView(leaf, plugin));
+        this.registerView(VIEW_TYPE_WIDGET, (leaf: WorkspaceLeaf) => new LearnKitWidgetView(leaf, plugin));
+        this.registerView(VIEW_TYPE_STUDY_ASSISTANT, (leaf: WorkspaceLeaf) => new LearnKitStudyAssistantView(leaf, plugin));
+        this.registerView(VIEW_TYPE_BROWSER, (leaf: WorkspaceLeaf) => new LearnKitCardBrowserView(leaf, plugin));
+        this.registerView(VIEW_TYPE_ANALYTICS, (leaf: WorkspaceLeaf) => new LearnKitAnalyticsView(leaf, plugin));
+        this.registerView(VIEW_TYPE_HOME, (leaf: WorkspaceLeaf) => new LearnKitHomeView(leaf, plugin));
+        this.registerView(VIEW_TYPE_SETTINGS, (leaf: WorkspaceLeaf) => new LearnKitSettingsView(leaf, plugin));
+        this.registerView(VIEW_TYPE_EXAM_GENERATOR, (leaf: WorkspaceLeaf) => new LearnKitExamGeneratorView(leaf, plugin));
+        this.registerView(VIEW_TYPE_COACH, (leaf: WorkspaceLeaf) => new LearnKitCoachView(leaf, plugin));
 
         // Legacy view-type aliases keep existing workspace tabs functional after renaming IDs.
-        this.registerView(LEGACY_VIEW_TYPE_REVIEWER, (leaf: WorkspaceLeaf) => new LearnKitReviewerView(leaf, this));
-        this.registerView(LEGACY_VIEW_TYPE_WIDGET, (leaf: WorkspaceLeaf) => new LearnKitWidgetView(leaf, this));
-        this.registerView(LEGACY_VIEW_TYPE_STUDY_ASSISTANT, (leaf: WorkspaceLeaf) => new LearnKitStudyAssistantView(leaf, this));
-        this.registerView(LEGACY_VIEW_TYPE_BROWSER, (leaf: WorkspaceLeaf) => new LearnKitCardBrowserView(leaf, this));
-        this.registerView(LEGACY_VIEW_TYPE_ANALYTICS, (leaf: WorkspaceLeaf) => new LearnKitAnalyticsView(leaf, this));
-        this.registerView(LEGACY_VIEW_TYPE_HOME, (leaf: WorkspaceLeaf) => new LearnKitHomeView(leaf, this));
-        this.registerView(LEGACY_VIEW_TYPE_SETTINGS, (leaf: WorkspaceLeaf) => new LearnKitSettingsView(leaf, this));
-        this.registerView(LEGACY_VIEW_TYPE_EXAM_GENERATOR, (leaf: WorkspaceLeaf) => new LearnKitExamGeneratorView(leaf, this));
-        this.registerView(LEGACY_VIEW_TYPE_COACH, (leaf: WorkspaceLeaf) => new LearnKitCoachView(leaf, this));
+        this.registerView(LEGACY_VIEW_TYPE_REVIEWER, (leaf: WorkspaceLeaf) => new LearnKitReviewerView(leaf, plugin));
+        this.registerView(LEGACY_VIEW_TYPE_WIDGET, (leaf: WorkspaceLeaf) => new LearnKitWidgetView(leaf, plugin));
+        this.registerView(LEGACY_VIEW_TYPE_STUDY_ASSISTANT, (leaf: WorkspaceLeaf) => new LearnKitStudyAssistantView(leaf, plugin));
+        this.registerView(LEGACY_VIEW_TYPE_BROWSER, (leaf: WorkspaceLeaf) => new LearnKitCardBrowserView(leaf, plugin));
+        this.registerView(LEGACY_VIEW_TYPE_ANALYTICS, (leaf: WorkspaceLeaf) => new LearnKitAnalyticsView(leaf, plugin));
+        this.registerView(LEGACY_VIEW_TYPE_HOME, (leaf: WorkspaceLeaf) => new LearnKitHomeView(leaf, plugin));
+        this.registerView(LEGACY_VIEW_TYPE_SETTINGS, (leaf: WorkspaceLeaf) => new LearnKitSettingsView(leaf, plugin));
+        this.registerView(LEGACY_VIEW_TYPE_EXAM_GENERATOR, (leaf: WorkspaceLeaf) => new LearnKitExamGeneratorView(leaf, plugin));
+        this.registerView(LEGACY_VIEW_TYPE_COACH, (leaf: WorkspaceLeaf) => new LearnKitCoachView(leaf, plugin));
 
-        this._coachDb = new CoachPlanSqlite(this);
+        this._coachDb = new CoachPlanSqlite(plugin);
         await this._coachDb.open();
 
-        this.addSettingTab(new LearnKitSettingsTab(this.app, this));
+        this.addSettingTab(new LearnKitSettingsTab(this.app, plugin));
 
         this._registerCommands();
 
@@ -521,7 +523,7 @@ export function WithLifecycleMethods<T extends Constructor<LearnKitPluginBase>>(
 
           this._updateStatusBarVisibility(null);
 
-          this._assistantPopup = new LearnKitAssistantPopup(this);
+          this._assistantPopup = new LearnKitAssistantPopup(this.asPlugin);
           this._assistantPopup.mount();
           this._assistantPopup.onActiveLeafChange();
           this.refreshAssistantPopupFromSettings();

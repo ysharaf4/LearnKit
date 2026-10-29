@@ -284,9 +284,9 @@ export function WithCoreMethods<T extends Constructor<LearnKitPluginBase>>(Base:
       const normalizedSelectedText = String(selectedText ?? ok.editor.getSelection?.() ?? "").trim();
 
       if (forcedType === "io" || forcedType === "hq") {
-        new ImageOcclusionCreatorModal(this.app, this, forcedType).open();
+        new ImageOcclusionCreatorModal(this.app, this.asPlugin, forcedType).open();
       } else {
-        new CardCreatorModal(this.app, this, forcedType, normalizedSelectedText).open();
+        new CardCreatorModal(this.app, this.asPlugin, forcedType, normalizedSelectedText).open();
       }
     }
 

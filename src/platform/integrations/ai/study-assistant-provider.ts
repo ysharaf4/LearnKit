@@ -213,7 +213,7 @@ function inlineSystemPromptIntoUserPrompt(systemPrompt: string, userPrompt: stri
 function shouldInlineSystemPromptForOpenAiLike(
   provider: StudyAssistantProvider,
   model: string,
-  variant: OpenAiLikeCompatibilityVariant = "default",
+  variant: ChatCompletionsRequestVariant = "default",
 ): boolean {
   if (variant === "compatibility") return true;
   // DeepSeek reasoner is more reliable when instructions are in the user turn.

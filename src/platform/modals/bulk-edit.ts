@@ -218,7 +218,7 @@ export class BulkEditCardModal extends Modal {
 
     control.classList.add("learnkit-flag-editor-control", "learnkit-flag-editor-control");
 
-    if (control.tagName === "TEXTAREA") {
+    if (control instanceof HTMLTextAreaElement) {
       // Start compact and allow user-resize up to max height.
       control.rows = 1;
       setCssProps(control, {
@@ -370,7 +370,8 @@ export class BulkEditCardModal extends Modal {
     });
 
     if (control.tagName === "TEXTAREA") {
-      control.addEventListener("keydown", (ev: KeyboardEvent) => {
+      control.addEventListener("keydown", (e: Event) => {
+        const ev = e as KeyboardEvent;
         if ((ev.metaKey || ev.ctrlKey) && !ev.altKey && String(ev.key).toLowerCase() === "a") {
           ev.stopPropagation();
         }

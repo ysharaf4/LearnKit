@@ -304,7 +304,7 @@ export function WithNavigationMethods<T extends Constructor<LearnKitPluginBase>>
       by = 1,
     ): Promise<void> {
       if (!this._coachDb) {
-        this._coachDb = new CoachPlanSqlite(this);
+        this._coachDb = new CoachPlanSqlite(this.asPlugin);
         await this._coachDb.open();
       }
       const d = new Date();

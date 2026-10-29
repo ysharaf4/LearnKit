@@ -592,7 +592,13 @@ export function parseCardsFromText(
   };
 
   const appendToField = (card: ParsedCard, key: CurrentFieldKey, chunk: string) => {
-    card[key] = (card[key] ? card[key] + "\n" : "") + chunk;
+    if (key === "interactionMode") {
+      const trimmed = chunk.trim().toLowerCase();
+      card.interactionMode = trimmed === "drag-drop" ? "drag-drop" : trimmed === "click" ? "click" : null;
+      return;
+    }
+    const prev = card[key];
+    (card as any)[key] = (typeof prev === "string" && prev ? prev + "\n" : "") + chunk;
   };
 
   for (let i = 0; i < lines.length; i++) {

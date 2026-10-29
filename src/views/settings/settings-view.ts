@@ -272,7 +272,7 @@ export class LearnKitSettingsView extends ItemView {
   }
 
   private _refreshLocalizedChrome() {
-    this.setTitle(this._settingsTitleText());
+    this.setTitle?.(this._settingsTitleText());
     this._refreshTitleStrip();
     this._header?.install("settings");
     this._applyWidthMode();

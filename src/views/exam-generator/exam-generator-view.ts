@@ -2502,7 +2502,7 @@ export class LearnKitExamGeneratorView extends ItemView {
       const isDocumentLevelTarget = !targetEl || targetEl === activeDocument.body || targetEl === activeDocument.documentElement;
 
       if (!eventInView && !focusInView && (!activeLeafMatches || !isDocumentLevelTarget)) return;
-      if (this._isTakingTextEntryElement(focusEl) || (targetEl && this._isTakingTextEntryElement(targetEl))) return;
+      if ((focusEl && this._isTakingTextEntryElement(focusEl)) || (targetEl && this._isTakingTextEntryElement(targetEl))) return;
 
       if (evt.key === "ArrowLeft") {
         if (!this._canGoToPreviousExamQuestion()) return;

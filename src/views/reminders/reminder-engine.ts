@@ -19,7 +19,7 @@ import type LearnKitPlugin from "../../main";
 import { countDueCardsNow, getDueCardsNow } from "./reminder-due-count";
 import { showReminderNotice } from "./reminder-notice";
 import { minutesToMs, normaliseReminderIntervalMinutes } from "./reminder-timing";
-import { GatekeeperModal } from "./gatekeeper-modal";
+import { GatekeeperModal, type HotspotAttemptMapEntry } from "./gatekeeper-modal";
 
 type ReminderSource = "startup" | "interval";
 
@@ -233,11 +233,11 @@ export class ReminderEngine {
 
       // Gather hotspot attempts from the active study view (reviewer or widget)
       // so the gatekeeper can show numbered dots at user click / drop positions.
-      let hotspotAttemptsMap: Map<string, Array<{ mode: string; x: number; y: number; correct: boolean; label?: string; removed?: boolean }>> | undefined;
+      let hotspotAttemptsMap: Map<string, HotspotAttemptMapEntry[]> | undefined;
       const activeReviewerLeaf = this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_REVIEWER)[0];
       const activeWidgetLeaf = this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_WIDGET)[0];
       const activeStudyView = (activeReviewerLeaf?.view ?? activeWidgetLeaf?.view) as {
-        getPendingHotspotAttempts?: () => Map<string, Array<{ mode: string; x: number; y: number; correct: boolean; label?: string; removed?: boolean }>>;
+        getPendingHotspotAttempts?: () => Map<string, HotspotAttemptMapEntry[]>;
       } | null;
       if (activeStudyView?.getPendingHotspotAttempts) {
         hotspotAttemptsMap = activeStudyView.getPendingHotspotAttempts();

@@ -1078,7 +1078,7 @@ function countsAsStudyCardDeletion(cardType: string): boolean {
 }
 
 function logSyncMutation(
-  scope: "syncOneFile" | "syncQuestionBank",
+  scope: "syncOneFile" | "syncQuestionBank" | "pruneOrphanedCards",
   action: SyncMutationAction,
   event: SyncMutationEvent,
 ): void {
@@ -1091,7 +1091,7 @@ function logSyncMutation(
 }
 
 function logSyncMutationSummary(
-  scope: "syncOneFile" | "syncQuestionBank",
+  scope: "syncOneFile" | "syncQuestionBank" | "pruneOrphanedCards",
   events: { added: SyncMutationEvent[]; updated: SyncMutationEvent[]; deleted: SyncMutationEvent[] },
 ): void {
   if (!events.added.length && !events.updated.length && !events.deleted.length) return;

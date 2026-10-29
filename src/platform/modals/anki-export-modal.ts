@@ -600,7 +600,7 @@ export class AnkiExportModal extends Modal {
     const apkgBuffer = apkgBytes.buffer.slice(
       apkgBytes.byteOffset,
       apkgBytes.byteOffset + apkgBytes.byteLength,
-    );
+    ) as ArrayBuffer;
 
     // ── Stats ───────────────────────────────────────────────────────────────
     const body = root.createDiv({ cls: "flex flex-col gap-1" });

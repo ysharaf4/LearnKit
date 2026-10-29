@@ -193,7 +193,7 @@ export class BulkEditModal extends Modal {
 
     control.classList.add("learnkit-flag-editor-control", "learnkit-flag-editor-control");
 
-    if (control.tagName === "TEXTAREA") {
+    if (control instanceof HTMLTextAreaElement) {
       // Let actual content drive height instead of keeping a fixed multi-row baseline.
       control.rows = 1;
       setCssProps(control, {
@@ -360,7 +360,8 @@ export class BulkEditModal extends Modal {
     });
 
     if (control.tagName === "TEXTAREA") {
-      control.addEventListener("keydown", (ev: KeyboardEvent) => {
+      control.addEventListener("keydown", (e: Event) => {
+        const ev = e as KeyboardEvent;
         if ((ev.metaKey || ev.ctrlKey) && !ev.altKey && String(ev.key).toLowerCase() === "a") {
           ev.stopPropagation();
         }
@@ -953,12 +954,12 @@ export class BulkEditModal extends Modal {
 
     wrapper.appendChild(shouldPreviewFlags ? attachFlagPreviewOverlay(input, modalFieldMin, modalFieldMax) : input);
     inputEls[field.key] = input;
-    if (input.tagName === "TEXTAREA") {
-      input.addEventListener("keydown", (ev: KeyboardEvent) => {
-        handleTabInTextarea(input, ev);
+    if (input instanceof HTMLTextAreaElement) {
+      input.addEventListener("keydown", (e: Event) => {
+        handleTabInTextarea(input, e as KeyboardEvent);
       });
     }
-    if (field.key === "question" && input.tagName === "TEXTAREA" && isClozeOnly) {
+    if (field.key === "question" && input instanceof HTMLTextAreaElement && isClozeOnly) {
       attachClozeShortcuts(input);
       if (shouldShowMobileClozeButtons()) {
         wrapper.appendChild(createMobileClozeButtons(input));

@@ -32,7 +32,7 @@ import { shouldSkipBackAutoplay } from "../../platform/integrations/tts/autoplay
 import { t } from "../../platform/translations/translator";
 import { makeEl } from "../../platform/core/dom-factory";
 
-type HotspotAttemptMapEntry = {
+export type HotspotAttemptMapEntry = {
   mode: "click" | "drag-drop";
   x: number;
   y: number;

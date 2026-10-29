@@ -48,7 +48,7 @@ interface AffectedCounts {
 
 type SyncPrivilegeChoice = "full" | "simple-safe" | "simple-compat" | "off";
 
-function resolveConfiguredSyncMode(priv: unknown): SyncPrivilegeChoice {
+function resolveConfiguredSyncMode(priv: unknown): "full" | "simple-safe" | "simple-compat" {
   if (priv === "simple-safe") return "simple-safe";
   if (priv === "simple-compat" || priv === "simple") return "simple-compat";
   return "full";
@@ -239,7 +239,7 @@ export function WithDataSyncMethods<T extends Constructor<LearnKitPluginBase>>(B
       new Notice(this._formatCurrentNoteSyncNotice(file.basename, res));
 
       if (res.quarantinedCount > 0) {
-        new ParseErrorModal(this.app, this, res.quarantinedIds).open();
+        new ParseErrorModal(this.app, this.asPlugin, res.quarantinedIds).open();
       }
 
       this.notifyWidgetCardsSynced();
@@ -350,7 +350,7 @@ export function WithDataSyncMethods<T extends Constructor<LearnKitPluginBase>>(B
         if (!safety.allow) {
           log.warn(`_doSave: aborting - ${safety.reason}`);
           try {
-            await createDataJsonBackupNow(this, "safety-before-empty-write");
+            await createDataJsonBackupNow(this.asPlugin, "safety-before-empty-write");
           } catch {
             // best effort
           }
@@ -360,7 +360,7 @@ export function WithDataSyncMethods<T extends Constructor<LearnKitPluginBase>>(B
         if (safety.backupFirst) {
           log.warn(`_doSave: ${safety.reason} Creating safety backup before writing.`);
           try {
-            await createDataJsonBackupNow(this, "safety-regression");
+            await createDataJsonBackupNow(this.asPlugin, "safety-regression");
           } catch {
             // best effort
           }
@@ -518,7 +518,7 @@ export function WithDataSyncMethods<T extends Constructor<LearnKitPluginBase>>(B
     };
 
     _clearAllNoteSchedulingState = async (): Promise<number> => {
-      const db = new NoteReviewSqlite(this);
+      const db = new NoteReviewSqlite(this.asPlugin);
       let total = 0;
 
       try {

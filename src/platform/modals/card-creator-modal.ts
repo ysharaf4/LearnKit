@@ -491,16 +491,16 @@ export class CardCreatorModal extends Modal {
           const infoInput = cardEditor.inputEls.info;
 
           if (questionInput && questionInput.tagName === "TEXTAREA") {
-            questionInput.addEventListener("paste", (ev) => void this.handleImagePaste(ev, questionInput));
+            questionInput.addEventListener("paste", (ev) => void this.handleImagePaste(ev as ClipboardEvent, questionInput as HTMLTextAreaElement));
           }
 
           // MCQ answer field is handled by the options UI, not a plain textarea
           if (answerInput && answerInput.tagName === "TEXTAREA" && currentType !== "mcq") {
-            answerInput.addEventListener("paste", (ev) => void this.handleImagePaste(ev, answerInput));
+            answerInput.addEventListener("paste", (ev) => void this.handleImagePaste(ev as ClipboardEvent, answerInput as HTMLTextAreaElement));
           }
 
           if (infoInput && infoInput.tagName === "TEXTAREA") {
-            infoInput.addEventListener("paste", (ev) => void this.handleImagePaste(ev, infoInput));
+            infoInput.addEventListener("paste", (ev) => void this.handleImagePaste(ev as ClipboardEvent, infoInput as HTMLTextAreaElement));
           }
         }
 
