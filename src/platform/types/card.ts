@@ -114,6 +114,8 @@ export type CardRecord = {
 
   // ── Shared metadata ────────────────────────────────────────────────────
   info?: string | null;
+  /** Path or wikilink to an audio file attached to this card (e.g. "sounds/hello.mp3" or "![[hello.mp3]]"). */
+  audioRef?: string | null;
   groups?: string[] | null;
 
   // ── Source location ────────────────────────────────────────────────────

@@ -738,7 +738,7 @@ export function FutureDueChart(props: {
 
       <div className="w-full flex-1 learnkit-analytics-chart">
         <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart isAnimationActive={false} data={data} margin={{ top: 12, right: 16, bottom: 12, left: 8 }}>
+          <ComposedChart data={data} margin={{ top: 12, right: 16, bottom: 12, left: 8 }}>
             <defs>
               <linearGradient id="learnkit-forecast-area" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--theme-accent)" stopOpacity={0.3} />
@@ -763,10 +763,10 @@ export function FutureDueChart(props: {
               domain={[0, yMax]}
             />
             <Tooltip content={<TooltipContent locale={props.locale} />} isAnimationActive={false} />
-            <Bar dataKey="new" stackId="due" fill={STAGE_COLORS.new} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="learning" stackId="due" fill={STAGE_COLORS.learning} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="relearning" stackId="due" fill={STAGE_COLORS.relearning} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="review" stackId="due" fill={STAGE_COLORS.review} radius={[0, 0, 0, 0]} />
+            <Bar isAnimationActive={false} dataKey="new" stackId="due" fill={STAGE_COLORS.new} radius={[0, 0, 0, 0]} />
+            <Bar isAnimationActive={false} dataKey="learning" stackId="due" fill={STAGE_COLORS.learning} radius={[0, 0, 0, 0]} />
+            <Bar isAnimationActive={false} dataKey="relearning" stackId="due" fill={STAGE_COLORS.relearning} radius={[0, 0, 0, 0]} />
+            <Bar isAnimationActive={false} dataKey="review" stackId="due" fill={STAGE_COLORS.review} radius={[0, 0, 0, 0]} />
             <Area
               dataKey="backlogSmooth"
               type="natural"

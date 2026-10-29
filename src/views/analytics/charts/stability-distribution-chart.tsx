@@ -591,7 +591,7 @@ export function StabilityDistributionChart(props: StabilityDistributionChartProp
 
       <div className={"w-full flex-1 learnkit-analytics-chart"}>
         <ResponsiveContainer width="100%" height={250}>
-          <AreaChart isAnimationActive={false} data={data} margin={{ top: 12, right: 12, bottom: 28, left: 8 }}>
+          <AreaChart data={data} margin={{ top: 12, right: 12, bottom: 28, left: 8 }}>
             <defs>
               <linearGradient id="stabilityGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--chart-accent-2)" stopOpacity={0.8} />

@@ -203,7 +203,7 @@ function PieCard(props: {
         {total > 0 ? (
           <div className="learnkit-analytics-chart">
             <ResponsiveContainer width="100%" height={200}>
-            <PieChart isAnimationActive={false}>
+            <PieChart>
               <Tooltip content={<PieTooltip locale={props.locale} />} isAnimationActive={false} />
               <Pie
                 data={dataWithColors}
@@ -214,6 +214,7 @@ function PieCard(props: {
                 paddingAngle={2}
                 stroke="var(--background)"
                 className={highlightLabel ? "learnkit-pie-highlightable" : undefined}
+                isAnimationActive={false}
               >
                 <Label
                   content={({ viewBox }) => {

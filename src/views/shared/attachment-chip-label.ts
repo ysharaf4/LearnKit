@@ -33,5 +33,7 @@ function attachmentTypeLabel(ext: string): string {
 
   if (["csv", "xls", "xlsx", "ods", "tsv"].includes(ext)) return "Spreadsheet";
 
+  if (["mp3", "m4a", "ogg", "wav", "webm", "flac", "aac", "opus"].includes(ext)) return "Audio";
+
   return "File";
 }

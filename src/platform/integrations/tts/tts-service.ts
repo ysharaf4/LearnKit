@@ -1232,7 +1232,7 @@ export function extractClozeAnswerForTts(
 export class TtsService {
   private _speaking = false;
   private _speakSession = 0;
-  private _resumeKeepAliveInterval: ReturnType<typeof setTimeout> | null = null;
+  private _resumeKeepAliveInterval: number | ReturnType<typeof setTimeout> | null = null;
   private _activeAudioContext: AudioContext | null = null;
   private _activePitchShifter: PitchShifter | null = null;
   private _activeGainNode: GainNode | null = null;
@@ -1329,6 +1329,15 @@ export class TtsService {
 
   /** Cancel any ongoing speech. */
   stop(): void {
+    this._stopSpeech(true);
+  }
+
+  /**
+   * Internal speech cancellation.
+   * When clearButton is false (e.g. at the start of a new speak() call),
+   * the currently marked active button is preserved for the new utterance.
+   */
+  private _stopSpeech(clearButton = true): void {
     this._speakSession += 1;
     this._pendingContinuation = null;
     this._clearResumeKeepAliveInterval();
@@ -1337,6 +1346,9 @@ export class TtsService {
       window.speechSynthesis.cancel();
     }
     this._setSpeaking(false);
+    if (clearButton) {
+      clearActiveTtsButton();
+    }
   }
 
   /** Run and clear any pending continuation callback. */
@@ -1473,8 +1485,8 @@ export class TtsService {
     if (!bypassEnabled && !settings.enabled) return;
     if (!text.trim()) return;
 
-    // Cancel any ongoing utterance
-    this.stop();
+    // Cancel any ongoing utterance without discarding a button marked active for this playback
+    this._stopSpeech(false);
 
     // ── External TTS provider branch ──
     const provider = settings.ttsProvider ?? "browser";
@@ -2023,6 +2035,18 @@ function _restoreTtsTooltip(btn: HTMLElement): void {
 }
 
 /**
+ * Clear any currently active TTS button, restoring its idle state and original tooltip.
+ * Can be called when audio playback (TTS or attached audio) ends or stops.
+ */
+export function clearActiveTtsButton(): void {
+  if (_activeTtsBtn) {
+    _activeTtsBtn.classList.remove("is-tts-playing");
+    _restoreTtsTooltip(_activeTtsBtn);
+    _activeTtsBtn = null;
+  }
+}
+
+/**
  * Mark a specific TTS button as the one that triggered playback.
  * Call this from the button's click handler *before* starting speech.
  */
@@ -2053,12 +2077,13 @@ export function markTtsFieldActive(container: HTMLElement, field: string): boole
 }
 
 /**
- * Prepare a TTS replay button with two icon layers so CSS can swap
- * between idle and playing states.
+ * Prepare a TTS replay button with visual layers so CSS can swap
+ * between idle and playing states:
  *
- * Icon mapping:
- * - Idle    → `volume-2`   (speaker icon)
- * - Playing → `volume-off` (muted speaker — only on the active button)
+ * Layers:
+ * - Idle    → `volume-2` (speaker icon)
+ * - Playing → animated 3-bar sound wave equalizer
+ * - Stop    → `volume-off` (shown on hover while playing)
  *
  * Call {@link markTtsButtonActive} in the click handler to associate the
  * button with the current playback session.
@@ -2067,7 +2092,11 @@ export function bindTtsPlayingState(btn: HTMLElement): void {
   const tts = getTtsService();
 
   // Clear any existing icon content (e.g. from setIcon call before this)
-  btn.empty();
+  if (typeof (btn as any).empty === "function") {
+    (btn as any).empty();
+  } else {
+    btn.textContent = "";
+  }
 
   const idleWrap = makeEl("span");
   idleWrap.className = "tts-icon-idle";
@@ -2075,18 +2104,28 @@ export function bindTtsPlayingState(btn: HTMLElement): void {
 
   const playingWrap = makeEl("span");
   playingWrap.className = "tts-icon-playing";
-  setIcon(playingWrap, "volume-off");
 
+  // Animated 3-bar sound wave equalizer
+  const wave = makeEl("span");
+  wave.className = "learnkit-sound-wave";
+  for (let i = 1; i <= 3; i++) {
+    const bar = makeEl("span");
+    bar.className = `learnkit-sound-bar bar-${i}`;
+    wave.appendChild(bar);
+  }
+
+  // Stop icon layer shown on hover while playing
+  const stopWrap = makeEl("span");
+  stopWrap.className = "tts-icon-stop";
+  setIcon(stopWrap, "square");
+
+  playingWrap.append(wave, stopWrap);
   btn.append(idleWrap, playingWrap);
 
   // When speaking stops globally, clear the active button's class
   const unsub = tts.onSpeakingChange((speaking) => {
     if (!speaking) {
-      if (_activeTtsBtn) {
-        _activeTtsBtn.classList.remove("is-tts-playing");
-        _restoreTtsTooltip(_activeTtsBtn);
-      }
-      _activeTtsBtn = null;
+      clearActiveTtsButton();
     }
   });
 

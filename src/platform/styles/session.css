@@ -918,15 +918,48 @@ body.is-phone .learnkit .lk-review-title-strip-session .lk-review-title-timer-ho
   transform: none;
 }
 
-/* ---- TTS replay button ---- */
+/* ---- TTS & Audio replay button ---- */
 
 .learnkit-label-row {
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-top: 1rem;
 }
 
 .learnkit :is(.learnkit-session-card, .lk-session-card) section > .learnkit-label-row:first-child {
   margin-top: 0;
+}
+
+.learnkit-label-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.learnkit-audio-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-full, 9999px);
+  background-color: var(--background-modifier-hover);
+  color: var(--text-accent, var(--interactive-accent));
+  border: 0.5px solid var(--border-subtle, var(--background-modifier-border));
+  user-select: none;
+  cursor: default;
+}
+
+.learnkit-label-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .learnkit-tts-replay-btn {
@@ -936,56 +969,121 @@ body.is-phone .learnkit .lk-review-title-strip-session .lk-review-title-timer-ho
   border: 0.5px solid transparent;
   box-shadow: none;
   border-radius: var(--radius-md);
-  padding: 2px;
-  min-width: 24px;
-  min-height: 24px;
+  padding: 3px;
+  min-width: 26px;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
-  opacity: 0.6;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s, transform 0.1s, opacity 0.15s;
+  opacity: 0.7;
 }
 
 .learnkit-tts-replay-btn:hover,
 .learnkit-tts-replay-btn:focus-visible {
-  color: var(--color-base-100);
-  background-color: var(--color-base-20);
-  border-color: var(--color-base-35);
+  color: var(--text-normal, var(--color-base-100));
+  background-color: var(--background-modifier-hover, var(--color-base-20));
+  border-color: var(--background-modifier-border, var(--color-base-35));
   opacity: 1;
 }
 
 .learnkit-tts-replay-btn:active {
-  color: var(--color-base-100);
+  transform: scale(0.95);
   background-color: var(--color-base-25);
   border-color: var(--color-base-40);
   opacity: 1;
 }
 
-/* ── TTS button icon layers ── */
+/* ── TTS / Audio button playing state & wave equalizer ── */
 
 .learnkit-tts-replay-btn .tts-icon-idle,
-.learnkit-tts-replay-btn .tts-icon-playing {
+.learnkit-tts-replay-btn .tts-icon-playing,
+.learnkit-tts-replay-btn .tts-icon-stop {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.learnkit-tts-replay-btn .tts-icon-playing {
+.learnkit-tts-replay-btn .tts-icon-playing,
+.learnkit-tts-replay-btn .tts-icon-stop {
   display: none;
 }
 
-/* Playing: swap volume-2 → volume-off */
+/* Playing: pulse glow + show equalizer wave */
+.learnkit-tts-replay-btn.is-tts-playing {
+  color: var(--text-accent, var(--interactive-accent));
+  background-color: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+  opacity: 1;
+  animation: learnkit-audio-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 .learnkit-tts-replay-btn.is-tts-playing .tts-icon-idle {
   display: none;
 }
+
 .learnkit-tts-replay-btn.is-tts-playing .tts-icon-playing {
   display: inline-flex;
 }
 
 .learnkit-tts-replay-btn.is-tts-playing:hover,
 .learnkit-tts-replay-btn.is-tts-playing:focus-visible {
-  background-color: var(--color-base-20);
-  border-color: var(--color-base-35);
+  color: var(--text-accent, var(--interactive-accent));
+  background-color: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+  opacity: 1;
+}
+
+/* ── Sound wave animation ── */
+
+.learnkit-sound-wave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 14px;
+  width: 14px;
+}
+
+.learnkit-sound-bar {
+  display: block;
+  width: 2px;
+  border-radius: 1px;
+  background-color: currentColor;
+  transform-origin: bottom;
+}
+
+.learnkit-sound-bar.bar-1 {
+  height: 6px;
+  animation: lk-soundbar 0.7s ease-in-out infinite alternate;
+}
+
+.learnkit-sound-bar.bar-2 {
+  height: 12px;
+  animation: lk-soundbar 0.7s ease-in-out infinite alternate 0.2s;
+}
+
+.learnkit-sound-bar.bar-3 {
+  height: 8px;
+  animation: lk-soundbar 0.7s ease-in-out infinite alternate 0.4s;
+}
+
+@keyframes lk-soundbar {
+  0% {
+    transform: scaleY(0.35);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes learnkit-audio-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 120, 120, 255), 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(var(--interactive-accent-rgb, 120, 120, 255), 0);
+  }
 }
 
 /* ---- Markdown block text (Q/A/cloze/info) ---- */

@@ -12,7 +12,7 @@ import { createOqReorderPreviewController } from "../../platform/core/oq-reorder
 import { setCssProps } from "../../platform/core/ui";
 import { applyInlineMarkdown } from "../../platform/integrations/anki/anki-mapper";
 import { setIcon } from "obsidian";
-import { bindTtsPlayingState, markTtsButtonActive } from "../../platform/integrations/tts/tts-service";
+import { bindTtsPlayingState, markTtsButtonActive, clearActiveTtsButton } from "../../platform/integrations/tts/tts-service";
 import { renderStudySessionHeader } from "./study-session-header";
 import type { Scope, Session, Rating } from "./types";
 import type { CardRecord } from "../../platform/core/store";
@@ -1358,27 +1358,61 @@ export function renderSessionMode(args: Args) {
   }
 
   // ===== Content =====
-  const mutedLabel = (s: string) => h("div", "text-muted-foreground text-sm font-medium", s);
+  const mutedLabel = (s: string) => {
+    const el = makeEl("div");
+    el.className = "learnkit-label-title text-muted-foreground text-sm font-medium";
+    el.textContent = s;
+    return el;
+  };
 
-  /** Build a "Question" or "Answer" label row with an optional TTS replay button. */
+  /** Build a "Question" or "Answer" label row with an optional TTS or attached audio replay button. */
   const labelRow = (text: string, replayFn?: () => void, ttsField?: string) => {
     const row = makeEl("div");
     row.className = "flex items-center justify-between learnkit-label-row";
-    row.appendChild(mutedLabel(text));
+
+    const titleGroup = makeEl("div");
+    titleGroup.className = "flex items-center gap-2 learnkit-label-left";
+    titleGroup.appendChild(mutedLabel(text));
+
+    const hasAttachedAudio = !!(card?.audioRef && String(card.audioRef).trim());
+
+    if (hasAttachedAudio && replayFn) {
+      const badge = makeEl("span");
+      badge.className = "learnkit-audio-badge";
+      badge.textContent = t(args.interfaceLanguage, "ui.common.audioAttachment", "Audio");
+      badge.setAttribute("title", String(card.audioRef).trim());
+      titleGroup.appendChild(badge);
+    }
+    row.appendChild(titleGroup);
+
     if (args.ttsEnabled && replayFn) {
+      const actions = makeEl("div");
+      actions.className = "flex items-center gap-1 learnkit-label-actions";
+
       const btn = makeEl("button");
       btn.type = "button";
       btn.className = "btn-icon learnkit-tts-replay-btn";
-      btn.setAttribute("aria-label", t(args.interfaceLanguage, "ui.reviewer.tts.readAloud", "Read {text} aloud", { text: text.toLowerCase() }));
+      const tooltip = hasAttachedAudio
+        ? t(args.interfaceLanguage, "ui.common.playAudio", "Play audio attachment")
+        : t(args.interfaceLanguage, "ui.reviewer.tts.readAloud", "Read {text} aloud", { text: text.toLowerCase() });
+      btn.setAttribute("aria-label", tooltip);
       btn.setAttribute("data-tooltip-position", "top");
       if (ttsField) btn.setAttribute("data-tts-field", ttsField);
+
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (btn.classList.contains("is-tts-playing")) {
+          clearActiveTtsButton();
+          replayFn();
+          return;
+        }
         markTtsButtonActive(btn);
         replayFn();
       });
-      row.appendChild(btn);
+
+      actions.appendChild(btn);
+      row.appendChild(actions);
       bindTtsPlayingState(btn);
     }
     return row;

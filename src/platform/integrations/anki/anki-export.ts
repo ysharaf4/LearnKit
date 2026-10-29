@@ -416,6 +416,7 @@ function buildFsrsParamsFromSettings(cfg?: SchedulerSettings | null): {
     learningStepsMinutes: cfg?.learningStepsMinutes ?? [10],
     relearningStepsMinutes: cfg?.relearningStepsMinutes ?? [],
     requestRetention: cfg?.requestRetention ?? 0.9,
+    enableFuzz: true,
   };
 
   const learning = (safeCfg.learningStepsMinutes ?? []).map(minutesToStepUnit);

@@ -339,7 +339,7 @@ export function NoteReviewAnalyticsCard(props: {
         <>
           <div className="w-full flex-1 learnkit-analytics-chart">
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart isAnimationActive={false} data={data} margin={{ left: 8, right: 8, top: 12, bottom: 12 }}>
+              <BarChart data={data} margin={{ left: 8, right: 8, top: 12, bottom: 12 }}>
                 <XAxis
                   dataKey="dayIndex"
                   type="number"
@@ -356,8 +356,8 @@ export function NoteReviewAnalyticsCard(props: {
                   allowDecimals={false}
                 />
                 <Tooltip content={<TooltipContent locale={props.locale} />} cursor={{ fill: "var(--background-modifier-hover)", opacity: 0.5 }} isAnimationActive={false} />
-                <Bar dataKey="reviewed" stackId="a" name={t(props.locale, "ui.analytics.noteReview.legendReviewed", "Reviewed")} fill="var(--chart-accent-2)" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="scheduledRemaining" stackId="a" name={t(props.locale, "ui.analytics.noteReview.legendScheduled", "Scheduled")} fill="var(--chart-accent-4)" radius={[3, 3, 0, 0]} />
+                <Bar isAnimationActive={false} dataKey="reviewed" stackId="a" name={t(props.locale, "ui.analytics.noteReview.legendReviewed", "Reviewed")} fill="var(--chart-accent-2)" radius={[0, 0, 0, 0]} />
+                <Bar isAnimationActive={false} dataKey="scheduledRemaining" stackId="a" name={t(props.locale, "ui.analytics.noteReview.legendScheduled", "Scheduled")} fill="var(--chart-accent-4)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

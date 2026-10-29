@@ -226,6 +226,7 @@ export function browserSortValue(
   if (key === "question") return buildQuestionFor(card);
   if (key === "answer") return card.type === "cloze" ? "" : buildAnswerOrOptionsFor(card);
   if (key === "info") return card.info || "";
+  if (key === "audioRef") return card.audioRef || "";
   return "";
 }
 
@@ -279,6 +280,11 @@ export function applyValueToCard(card: CardRecord, col: ColKey, value: string): 
     return draft;
   }
 
+  if (col === "audioRef") {
+    draft.audioRef = v ? v : null;
+    return draft;
+  }
+
   if (col === "groups") {
     const groups = parseGroupsInput(v);
     draft.groups = groups.length ? groups : null;
@@ -329,6 +335,7 @@ export function readCardField(card: CardRecord, col: ColKey, plugin: LearnKitPlu
   if (col === "question") return buildQuestionFor(card);
   if (col === "answer") return card.type === "cloze" ? "" : buildAnswerOrOptionsFor(card);
   if (col === "info") return card.info || "";
+  if (col === "audioRef") return card.audioRef || "";
   if (col === "location") return fmtLocation(card.sourceNotePath);
   if (col === "groups") return fmtGroups(card.groups);
   return "";

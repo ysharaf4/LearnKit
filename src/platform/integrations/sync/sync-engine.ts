@@ -544,6 +544,7 @@ function cardSignature(rec: CardRecord | null): string {
     type: rec.type,
     title: rec.title || "",
     info: rec.info || "",
+    audioRef: rec.audioRef || "",
     groups: Array.isArray(rec.groups) ? rec.groups : [],
   };
 
@@ -1156,6 +1157,7 @@ function syncReversedChildren(plugin: LearnKitPlugin, parent: CardRecord, now: n
       q: parent?.q ?? null,
       a: parent?.a ?? null,
       info: parent?.info ?? null,
+      audioRef: parent?.audioRef ?? null,
       groups: parent?.groups ?? null,
       sourceNotePath: String(parent?.sourceNotePath || ""),
       sourceStartLine: Number(parent?.sourceStartLine ?? 0) || 0,
@@ -1616,6 +1618,7 @@ function syncClozeChildren(plugin: LearnKitPlugin, parent: CardRecord, now: numb
       clozeIndex: idx,
       clozeText: parent?.clozeText ?? null,
       info: parent?.info ?? null,
+      audioRef: parent?.audioRef ?? null,
       groups: parent?.groups ?? null,
       sourceNotePath: String(parent?.sourceNotePath || ""),
       sourceStartLine: Number(parent?.sourceStartLine ?? 0) || 0,
@@ -1732,6 +1735,7 @@ function syncIoChildren(plugin: LearnKitPlugin, parent: CardRecord, now: number,
       retired: false,
       prompt: (legacy.prompt as string | null) ?? null,
       info: parent?.info ?? null,
+      audioRef: parent?.audioRef ?? null,
       groups: parent?.groups ?? null,
       sourceNotePath: String(parent?.sourceNotePath || ""),
       sourceStartLine: Number(parent?.sourceStartLine ?? 0) || 0,
@@ -1861,6 +1865,7 @@ function syncHqChildren(plugin: LearnKitPlugin, parent: CardRecord, now: number,
       prompt: formatHotspotPrompt(groupToLabel.get(groupKey) || groupKey),
       interactionMode: hqDef.interactionMode ?? parent?.interactionMode ?? null,
       info: parent?.info ?? null,
+      audioRef: parent?.audioRef ?? null,
       groups: parent?.groups ?? null,
       sourceNotePath: String(parent?.sourceNotePath || ""),
       sourceStartLine: Number(parent?.sourceStartLine ?? 0) || 0,
@@ -2340,6 +2345,7 @@ export async function syncOneFile(
           : undefined,
 
         info: c.info ?? null,
+        audioRef: c.audioRef ?? null,
         groups: c.groups ?? null,
 
         sourceNotePath: c.sourceNotePath,
@@ -2907,6 +2913,7 @@ export async function syncQuestionBank(plugin: LearnKitPlugin, options?: { syncM
           : undefined,
 
         info: c.info ?? null,
+        audioRef: c.audioRef ?? null,
         groups: c.groups ?? null,
 
         sourceNotePath: c.sourceNotePath,

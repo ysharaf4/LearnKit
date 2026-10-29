@@ -66,8 +66,8 @@ import { makeEl } from "../../platform/core/dom-factory";
 type BrowserDensityMode = "comfortable" | "compact";
 
 const BROWSER_PREFS_ROOT_KEY = "browserPrefs";
-const COMPACT_DEFAULT_HIDDEN_COLS: ColKey[] = ["id", "stage", "due", "location"];
-const ALL_COLS: ColKey[] = ["id", "type", "stage", "due", "title", "question", "answer", "info", "location", "groups"];
+const COMPACT_DEFAULT_HIDDEN_COLS: ColKey[] = ["id", "stage", "due", "audioRef", "location"];
+const ALL_COLS: ColKey[] = ["id", "type", "stage", "due", "title", "question", "answer", "info", "audioRef", "location", "groups"];
 
 export class LearnKitCardBrowserView extends ItemView {
   plugin: LearnKitPlugin;
@@ -98,13 +98,13 @@ export class LearnKitCardBrowserView extends ItemView {
   private _colMin: Record<ColKey, number> = {
     id: 120, type: 110, stage: 80, due: 90,
     title: 140, question: 140, answer: 140,
-    info: 150, location: 150, groups: 200,
+    info: 150, audioRef: 100, location: 150, groups: 200,
   };
 
   private _colMax: Record<ColKey, number> = {
     id: 500, type: 500, stage: 500, due: 500,
     title: 500, question: 500, answer: 500,
-    info: 500, location: 500, groups: 500,
+    info: 500, audioRef: 500, location: 500, groups: 500,
   };
 
   private _tableBody: HTMLTableSectionElement | null = null;
@@ -349,7 +349,7 @@ export class LearnKitCardBrowserView extends ItemView {
     }
   }
 
-  private _browserPrefsSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private _browserPrefsSaveTimer: number | null = null;
 
   private _queuePersistBrowserPrefs() {
     if (this._browserPrefsSaveTimer !== null) return;

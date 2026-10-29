@@ -82,6 +82,7 @@ const DEFAULT_SCHEDULER: SchedulerSettings = {
   learningStepsMinutes: [10, 1440],
   relearningStepsMinutes: [10],
   requestRetention: 0.9,
+  enableFuzz: true,
 };
 
 const LINE_COLORS = [
@@ -797,7 +798,7 @@ export function ForgettingCurveChart(props: {
       {curves.length ? (
         <div className="learnkit-analytics-chart">
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart isAnimationActive={false} data={data} margin={{ top: 28, right: 12, left: 16, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 28, right: 12, left: 16, bottom: 0 }}>
               <XAxis
                 dataKey="day"
                 ticks={[0, maxDays / 2, maxDays]}

@@ -745,7 +745,7 @@ export function StackedReviewButtonsChart(props: {
 
       <div className="w-full flex-1 learnkit-analytics-chart">
         <ResponsiveContainer width="100%" height={250}>
-          <BarChart isAnimationActive={false} data={data} margin={{ top: 12, right: 12, bottom: 12, left: 8 }}>
+          <BarChart data={data} margin={{ top: 12, right: 12, bottom: 12, left: 8 }}>
             <XAxis
               dataKey="dayIndex"
               tickLine={false}

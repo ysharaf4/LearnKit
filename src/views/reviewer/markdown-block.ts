@@ -214,6 +214,9 @@ export function buildCardBlockMarkdown(id: string, rec: CardRecord): string[] {
   const info = (rec.info || "").trim();
   if (info) pushPipeField("I", info);
 
+  const audioRef = (rec.audioRef || "").trim();
+  if (audioRef) pushPipeField("AU", audioRef);
+
   // Preserve groups (always last)
   const groups = normalizeGroups(rec.groups);
   if (groups.length) pushPipeField("G", groups.join(", "));

@@ -89,6 +89,7 @@ export type ColKey =
   | "question"
   | "answer"
   | "info"
+  | "audioRef"
   | "location"
   | "groups";
 
@@ -114,6 +115,7 @@ export const DEFAULT_COL_WIDTHS: Record<ColKey, number> = {
   question: 240,
   answer: 240,
   info: 250,
+  audioRef: 140,
   location: 150,
   groups: 250,
 };

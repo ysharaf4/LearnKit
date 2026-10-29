@@ -13,7 +13,7 @@
  *   - clearEmptyState — removes any existing empty-state overlay from the root element
  */
 
-import { Notice, setIcon, type App } from "obsidian";
+import { Notice, setIcon, type App, TFile } from "obsidian";
 import type LearnKitPlugin from "../../main";
 import type { CardRecord } from "../../platform/core/store";
 import { normalizeCardOptions, getCorrectIndices } from "../../platform/core/store";
@@ -263,6 +263,49 @@ export function buildPageTableBody(
     tr.appendChild(makeEditorCell("question", card, isQuarantined, ctx));
     tr.appendChild(makeEditorCell("answer", card, isQuarantined, ctx));
     tr.appendChild(makeEditorCell("info", card, isQuarantined, ctx));
+
+    // ── Audio cell ──
+    const audioTd = makeEl("td");
+    audioTd.className = `align-top ${ctx.readonlyTextClass} ${ctx.cellWrapClass} lk-browser-cell`;
+    forceCellClip(audioTd);
+    forceWrapStyles(audioTd);
+    setColAttr(audioTd, "audioRef");
+    if (card.audioRef) {
+      const clean = card.audioRef.trim().replace(/^!\[\[/, "").replace(/\]\]$/, "");
+      const basename = clean.split("/").pop() ?? clean;
+      const chip = makeEl("button");
+      chip.type = "button";
+      chip.className = "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground cursor-pointer truncate max-w-full";
+      const icon = makeEl("span");
+      icon.className = "shrink-0 inline-flex items-center [&_svg]:size-3";
+      setIcon(icon, "volume-2");
+      const name = makeEl("span");
+      name.className = "truncate";
+      name.textContent = basename;
+      chip.title = `${card.audioRef} (click to play)`;
+      chip.appendChild(icon);
+      chip.appendChild(name);
+      chip.addEventListener("click", (e) => {
+        e.stopPropagation();
+        try {
+          const app = (window as unknown as { app?: App }).app;
+          let file = app?.vault?.getAbstractFileByPath(clean);
+          if (!(file instanceof TFile)) {
+            file = app?.metadataCache?.getFirstLinkpathDest(clean, card.sourceNotePath || "") ?? null;
+          }
+          if (file instanceof TFile && app?.vault?.getResourcePath) {
+            const src = app.vault.getResourcePath(file);
+            const a = new Audio(src);
+            a.play().catch(() => {});
+          }
+        } catch { /* ignore */ }
+      });
+      audioTd.appendChild(chip);
+    } else {
+      audioTd.textContent = "—";
+      audioTd.classList.add("text-muted-foreground");
+    }
+    tr.appendChild(audioTd);
 
     // ── Location cell ──
     tr.appendChild(tdMuted(fmtLocation(card.sourceNotePath), "location", card.sourceNotePath));

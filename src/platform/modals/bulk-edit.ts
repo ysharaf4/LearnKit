@@ -20,7 +20,7 @@ import { normalizeCardOptions, getCorrectIndices } from "../core/store";
 import {
   buildAnswerOrOptionsFor, escapePipes, parseMcqOptionsFromCell, } from "../../views/reviewer/fields";
 import { stageLabelTx } from "../../views/reviewer/labels";
-import { createGroupPickerField as createGroupPickerFieldImpl } from "../card-editor/card-editor";
+import { createGroupPickerField as createGroupPickerFieldImpl, createAudioPickerField } from "../card-editor/card-editor";
 
 import {
   typeLabelBrowserTx, fmtDue, fmtLocation, parseGroupsInput, groupsToInput, createThemedDropdown, setModalTitle, scopeModalToWorkspace, } from "./modal-utils";
@@ -1036,6 +1036,24 @@ export class BulkEditCardModal extends Modal {
   // Extra information
   form.appendChild(createEditableTextareaField(this._tx("ui.common.extraInformation", "Extra information"), "info"));
 
+  // ── Audio attachment field (single-card edit only) ─────────────────────────
+  if (isSingleEdit) {
+    const audioWrapper = makeEl("div");
+    audioWrapper.className = "flex flex-col gap-1 learnkit-card-meta-field";
+
+    const audioLabel = makeEl("label");
+    audioLabel.className = "text-sm font-medium";
+    audioLabel.textContent = this._tx("ui.common.audioAttachment", "Audio attachment");
+    audioWrapper.appendChild(audioLabel);
+
+    const audioField = createAudioPickerField(String(cards[0].audioRef || ""), plugin);
+    audioWrapper.appendChild(audioField.element);
+    audioWrapper.appendChild(audioField.hiddenInput);
+    inputEls["audioRef"] = audioField.hiddenInput;
+
+    form.appendChild(audioWrapper);
+  }
+
   // ── Groups field (Basecoat tag picker) ────────────────────────────────────
   const groupsWrapper = makeEl("div");
   groupsWrapper.className = "flex flex-col gap-1";
@@ -1110,6 +1128,12 @@ export class BulkEditCardModal extends Modal {
       }
 
       if (val) updates[field] = val;
+    }
+
+    // Collect audioRef (single-card edit only)
+    const audioRefEl = inputEls["audioRef"];
+    if (audioRefEl !== undefined) {
+      updates["audioRef"] = String(audioRefEl.value ?? "").trim();
     }
 
     // Handle MCQ if single MCQ selected
@@ -1230,6 +1254,10 @@ export class BulkEditCardModal extends Modal {
         }
 
         if (updates.info !== undefined) updated.info = updates.info || null;
+
+        if (updates.audioRef !== undefined) {
+          (updated as Record<string, unknown>).audioRef = updates.audioRef || null;
+        }
 
         if (updates.groups !== undefined) {
           const groups = parseGroupsInput(updates.groups);

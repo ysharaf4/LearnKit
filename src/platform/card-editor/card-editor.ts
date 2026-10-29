@@ -10,7 +10,7 @@
  *  - createGroupPickerField — creates a tag-picker input field for card group assignment
  */
 
-import { Notice, Platform, setIcon } from "obsidian";
+import { Modal, Notice, Platform, setIcon, type App, TFile } from "obsidian";
 import type LearnKitPlugin from "../../main";
 import type { CardRecord } from "../../platform/core/store";
 import { normalizeCardOptions } from "../../platform/core/store";
@@ -40,6 +40,7 @@ export type ColKey =
   | "question"
   | "answer"
   | "info"
+  | "audioRef"
   | "location"
   | "groups";
 
@@ -205,7 +206,7 @@ export function attachFlagPreviewOverlay(
 
   if (control.tagName === "TEXTAREA") {
     // Let actual content drive height instead of keeping a fixed multi-row baseline.
-    control.rows = 1;
+    (control as HTMLTextAreaElement).rows = 1;
     setCssProps(control, "resize", "vertical");
   }
 
@@ -384,7 +385,7 @@ export function attachFlagPreviewOverlay(
   });
 
   if (control.tagName === "TEXTAREA") {
-    control.addEventListener("keydown", (ev: KeyboardEvent) => {
+    (control as HTMLTextAreaElement).addEventListener("keydown", (ev: KeyboardEvent) => {
       if ((ev.metaKey || ev.ctrlKey) && !ev.altKey && String(ev.key).toLowerCase() === "a") {
         ev.stopPropagation();
       }
@@ -749,6 +750,163 @@ function attachFormatShortcuts(textarea: HTMLTextAreaElement) {
 const escapePipeText = (s: string): string =>
   escapeDelimiterText(s, { escapeBackslashes: false });
 
+/** Accepted audio file extensions for the vault file picker. */
+const AUDIO_EXTENSIONS = ["mp3", "m4a", "ogg", "wav", "webm", "flac", "aac", "opus"];
+
+/** Returns the filename (basename) from a vault path or wikilink like ![[file.mp3]]. */
+function audioRefBasename(ref: string): string {
+  const clean = ref.trim().replace(/^!\[\[/, "").replace(/\]\]$/, "");
+  return clean.split("/").pop() ?? clean;
+}
+
+class AudioFilePicker extends Modal {
+  private files: TFile[];
+  private onPick: (file: TFile) => void;
+
+  constructor(app: App, files: TFile[], onPick: (file: TFile) => void) {
+    super(app);
+    this.files = files;
+    this.onPick = onPick;
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("learnkit", "learnkit-audio-picker-modal");
+
+    const header = contentEl.createEl("h3", { text: "Select an audio file" });
+    header.className = "text-base font-semibold mb-3";
+
+    const searchInput = contentEl.createEl("input", {
+      type: "text",
+      placeholder: "Search audio files...",
+      cls: "input w-full mb-3",
+    });
+
+    const listEl = contentEl.createDiv({ cls: "flex flex-col gap-1 max-h-60 overflow-y-auto" });
+
+    const render = (filter: string) => {
+      listEl.empty();
+      const q = filter.toLowerCase().trim();
+      const matches = q
+        ? this.files.filter((f) => f.path.toLowerCase().includes(q))
+        : this.files;
+
+      if (!matches.length) {
+        const empty = listEl.createDiv({ cls: "text-sm text-muted-foreground py-2" });
+        empty.textContent = "No matching audio files.";
+        return;
+      }
+
+      for (const file of matches) {
+        const item = listEl.createEl("button", {
+          type: "button",
+          cls: "text-left text-sm py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer truncate flex items-center gap-2 w-full",
+        });
+        const icon = item.createSpan({ cls: "shrink-0 [&_svg]:size-3.5 text-muted-foreground" });
+        setIcon(icon, "volume-2");
+        item.createSpan({ text: file.path, cls: "truncate" });
+        item.addEventListener("click", () => {
+          this.onPick(file);
+          this.close();
+        });
+      }
+    };
+
+    searchInput.addEventListener("input", () => render(searchInput.value));
+    render("");
+    searchInput.focus();
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+}
+
+/**
+ * Creates an audio attachment picker section.
+ * Returns the wrapper element and a hidden input element whose value holds the chosen audioRef.
+ */
+export function createAudioPickerField(
+  initialValue: string,
+  plugin: LearnKitPlugin,
+): { element: HTMLElement; hiddenInput: HTMLInputElement } {
+  const doc = activeDocument;
+
+  const hiddenInput = makeEl("input", doc) as HTMLInputElement;
+  hiddenInput.type = "hidden";
+  hiddenInput.value = initialValue || "";
+
+  const wrap = makeEl("div", doc);
+  wrap.className = "flex flex-col gap-1";
+
+  const chipRow = makeEl("div", doc);
+  chipRow.className = "flex items-center gap-2 flex-wrap min-h-[2rem]";
+
+  let chooseBtn: HTMLButtonElement;
+
+  const renderChip = (ref: string) => {
+    chipRow.textContent = "";
+    if (!ref) {
+      chipRow.appendChild(chooseBtn);
+      return;
+    }
+    const chip = makeEl("span", doc);
+    chip.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground max-w-full";
+    const icon = makeEl("span", doc);
+    icon.className = "shrink-0 inline-flex items-center [&_svg]:size-3";
+    setIcon(icon, "volume-2");
+    const name = makeEl("span", doc);
+    name.className = "truncate max-w-[200px]";
+    name.textContent = audioRefBasename(ref);
+    name.title = ref;
+    const removeBtn = makeEl("button", doc) as HTMLButtonElement;
+    removeBtn.type = "button";
+    removeBtn.className = "shrink-0 inline-flex items-center [&_svg]:size-3 text-muted-foreground hover:text-foreground ml-1";
+    removeBtn.setAttribute("aria-label", "Remove audio");
+    setIcon(removeBtn, "x");
+    removeBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      hiddenInput.value = "";
+      renderChip("");
+    });
+    chip.appendChild(icon);
+    chip.appendChild(name);
+    chip.appendChild(removeBtn);
+    chipRow.appendChild(chip);
+  };
+
+  chooseBtn = makeEl("button", doc) as HTMLButtonElement;
+  chooseBtn.type = "button";
+  chooseBtn.className = "learnkit-btn-toolbar h-7 px-2 text-sm inline-flex items-center justify-center gap-1";
+  const btnIcon = makeEl("span", doc);
+  btnIcon.className = "shrink-0 inline-flex items-center [&_svg]:size-3";
+  setIcon(btnIcon, "paperclip");
+  chooseBtn.appendChild(btnIcon);
+  chooseBtn.appendChild(doc.createTextNode(" Choose audio"));
+  chooseBtn.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    const files = plugin.app.vault.getFiles().filter((f) =>
+      AUDIO_EXTENSIONS.includes(f.extension.toLowerCase())
+    );
+    if (!files.length) {
+      new Notice("No audio files found in the vault. Add mp3/m4a/ogg/wav/webm/flac files first.");
+      return;
+    }
+    new AudioFilePicker(plugin.app, files, (file) => {
+      hiddenInput.value = file.path;
+      renderChip(file.path);
+    }).open();
+  });
+
+  renderChip(initialValue || "");
+  wrap.appendChild(chipRow);
+
+  return { element: wrap, hiddenInput };
+}
+
+
+
 interface CardEditorConfig {
   plugin: LearnKitPlugin;
   cards: CardRecord[];
@@ -818,6 +976,7 @@ export function createCardEditor(config: CardEditorConfig): CardEditorResult {
   }
 
   formFields.push({ key: "info", label: t(locale, "ui.common.extraInformation", "Extra information"), editable: true });
+  formFields.push({ key: "audioRef", label: t(locale, "ui.common.audioAttachment", "Audio attachment"), editable: true });
   formFields.push({ key: "groups", label: t(locale, "ui.common.groups", "Groups"), editable: true });
 
   if (isSingleMcq || isSingleOq) {
@@ -880,6 +1039,18 @@ export function createCardEditor(config: CardEditorConfig): CardEditorResult {
       wrapper.appendChild(groupField.element);
       wrapper.appendChild(groupField.hiddenInput);
       inputEls[field.key] = groupField.hiddenInput;
+      root.appendChild(wrapper);
+      return;
+    }
+
+    if (field.key === "audioRef") {
+      // Only show audio picker when editing a single card (not bulk edit)
+      if (cards.length === 1) {
+        const audioField = createAudioPickerField(sharedValue(field.key), plugin);
+        wrapper.appendChild(audioField.element);
+        wrapper.appendChild(audioField.hiddenInput);
+        inputEls[field.key] = audioField.hiddenInput;
+      }
       root.appendChild(wrapper);
       return;
     }
@@ -947,11 +1118,12 @@ export function createCardEditor(config: CardEditorConfig): CardEditorResult {
     wrapper.appendChild(shouldPreviewFlags ? attachFlagPreviewOverlay(input, modalFieldMin, modalFieldMax) : input);
     inputEls[field.key] = input;
     if (input.tagName === "TEXTAREA") {
-      attachFormatShortcuts(input);
+      const textarea = input as HTMLTextAreaElement;
+      attachFormatShortcuts(textarea);
       if (field.key === "question" && isClozeOnly) {
-        attachClozeShortcuts(input);
+        attachClozeShortcuts(textarea);
         if (shouldShowMobileClozeButtons()) {
-          wrapper.appendChild(createMobileClozeButtons(input));
+          wrapper.appendChild(createMobileClozeButtons(textarea));
         }
       }
     }
@@ -1071,6 +1243,8 @@ function getFieldValue(card: CardRecord, key: ColKey): string {
       return "";
     case "info":
       return card.info || "";
+    case "audioRef":
+      return card.audioRef || "";
     case "location":
       return String(card.sourceNotePath || "");
     case "groups":

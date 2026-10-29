@@ -346,15 +346,15 @@ function _rebuildRegexes() {
   // parser.ts — card start: ^(RQ|Q|MCQ|CQ|IO|HQ|OQ|QX)\s*<d>\s*(.*)$
   _CARD_START_DELIM_RE = new RegExp(`^(RQ|Q|MCQ|CQ|IO|HQ|OQ|QX)\\s*${d}\\s*(.*)$`, "u");
 
-  // parser.ts — field: ^(T|A|O|I|G|C|M|AX|\d{1,2})\s*<d>\s*(.*)$
-  _FIELD_DELIM_RE = new RegExp(`^(T|A|O|I|G|C|M|AX|\\d{1,2})\\s*${d}\\s*(.*)$`, "u");
+  // parser.ts — field: ^(T|A|O|I|G|C|M|AX|AU|\d{1,2})\s*<d>\s*(.*)$
+  _FIELD_DELIM_RE = new RegExp(`^(T|A|O|I|G|C|M|AX|AU|\\d{1,2})\\s*${d}\\s*(.*)$`, "u");
 
   // parser.ts — title outside card: ^T\s*<d>\s*(.*)$
   _TITLE_OUTSIDE_DELIM_RE = new RegExp(`^T\\s*${d}\\s*(.*)$`, "u");
 
-  // parser.ts — any header/anchor: ^(?:^learnkit-\d{9}|^learnkit-\d{9}|(?:RQ|Q|MCQ|CQ|IO|HQ|OQ|QX|T|A|O|I|G|C|M|AX|\d{1,2})\s*<d>)\s*
+  // parser.ts — any header/anchor: ^(?:^learnkit-\d{9}|^learnkit-\d{9}|(?:RQ|Q|MCQ|CQ|IO|HQ|OQ|QX|T|A|O|I|G|C|M|AX|AU|\d{1,2})\s*<d>)\s*
   _ANY_HEADER_DELIM_RE = new RegExp(
-    `^(?:\\^${ANCHOR_PREFIX_PATTERN}-\\d{9}|(?:RQ|Q|MCQ|CQ|IO|HQ|OQ|QX|T|A|O|I|G|C|M|AX|\\d{1,2})\\s*${d})\\s*`,
+    `^(?:\\^${ANCHOR_PREFIX_PATTERN}-\\d{9}|(?:RQ|Q|MCQ|CQ|IO|HQ|OQ|QX|T|A|O|I|G|C|M|AX|AU|\\d{1,2})\\s*${d})\\s*`,
     "u",
   );
 
@@ -369,9 +369,9 @@ function _rebuildRegexes() {
   );
 
   // settings-utils.ts — field line:
-  //   ^(T|A|I|O|G|M|AX|\d{1,2})\s*(?::|<d>)\s*.*$|^(C|K)\s*(?::|<d>)\s*.*$
+  //   ^(T|A|I|O|G|M|AX|AU|\d{1,2})\s*(?::|<d>)\s*.*$|^(C|K)\s*(?::|<d>)\s*.*$
   _FIELD_LINE_SETTINGS_RE = new RegExp(
-    `^(T|A|I|O|G|M|AX|\\d{1,2})\\s*(?::|${d})\\s*.*$|^(C|K)\\s*(?::|${d})\\s*.*$`,
+    `^(T|A|I|O|G|M|AX|AU|\\d{1,2})\\s*(?::|${d})\\s*.*$|^(C|K)\\s*(?::|${d})\\s*.*$`,
     "u",
   );
 
@@ -380,8 +380,8 @@ function _rebuildRegexes() {
   _FLASHCARD_HEADER_CARD_RE = new RegExp(`^(RQ|Q|MCQ|CQ|IO|HQ|OQ|QX)\\s*(?::|${d})\\s*`, "u");
 
   // sync-engine.ts — flashcard header (field types):
-  //   ^(T|A|O|I|G|C|M|K|L|AX|QX|\d{1,2})\s*(?::|<d>)\s*
-  _FLASHCARD_HEADER_FIELD_RE = new RegExp(`^(T|A|O|I|G|C|M|K|L|AX|QX|\\d{1,2})\\s*(?::|${d})\\s*`, "u");
+  //   ^(T|A|O|I|G|C|M|K|L|AX|AU|QX|\d{1,2})\s*(?::|<d>)\s*
+  _FLASHCARD_HEADER_FIELD_RE = new RegExp(`^(T|A|O|I|G|C|M|K|L|AX|AU|QX|\\d{1,2})\\s*(?::|${d})\\s*`, "u");
 }
 
 // Initial build with default delimiter

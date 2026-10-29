@@ -182,6 +182,7 @@ export function buildBrowserLayout(
         { v: "question", label: tx("ui.browser.column.question", "Question") },
         { v: "answer", label: tx("ui.browser.column.answer", "Answer") },
         { v: "info", label: tx("ui.browser.column.info", "Extra information") },
+        { v: "audioRef", label: tx("ui.common.audioAttachment", "Audio") },
         { v: "location", label: tx("ui.browser.column.location", "Location") },
         { v: "groups", label: tx("ui.browser.column.groups", "Groups") },
       ],
@@ -460,6 +461,7 @@ export function buildBrowserLayout(
   hr.appendChild(headCell(tx("ui.browser.column.question", "Question"), "question"));
   hr.appendChild(headCell(tx("ui.browser.column.answerOptions", "Answer / Options"), "answer"));
   hr.appendChild(headCell(tx("ui.browser.column.info", "Extra information"), "info"));
+  hr.appendChild(headCell(tx("ui.common.audioAttachment", "Audio"), "audioRef"));
   hr.appendChild(headCell(tx("ui.browser.column.location", "Location"), "location"));
   hr.appendChild(headCell(tx("ui.browser.column.groups", "Groups"), "groups"));
 

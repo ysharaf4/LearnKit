@@ -470,7 +470,7 @@ export function TestsAnalyticsCard(props: {
         <>
           <div className="w-full flex-1 learnkit-analytics-chart">
             <ResponsiveContainer width="100%" height={250}>
-              <ComposedChart isAnimationActive={false} margin={{ left: 8, right: 8, top: 12, bottom: 12 }}>
+              <ComposedChart margin={{ left: 8, right: 8, top: 12, bottom: 12 }}>
                 <XAxis
                   dataKey="dayIndex"
                   type="number"
@@ -498,6 +498,7 @@ export function TestsAnalyticsCard(props: {
                   name="Score"
                   fill="var(--chart-accent-2)"
                   fillOpacity={0.8}
+                  isAnimationActive={false}
                 />
                 <Line
                   data={dailyAverageSeries}
@@ -509,6 +510,7 @@ export function TestsAnalyticsCard(props: {
                   connectNulls
                   dot={false}
                   activeDot={false}
+                  isAnimationActive={false}
                 />
               </ComposedChart>
             </ResponsiveContainer>

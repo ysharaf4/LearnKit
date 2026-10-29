@@ -50,7 +50,7 @@ import {
 import { logFsrsIfNeeded, logUndoIfNeeded } from "./fsrs-log";
 import { renderTitleMarkdownIfNeeded } from "./title-markdown";
 import { findCardBlockRangeById, buildCardBlockMarkdown } from "./markdown-block";
-import { getTtsService, markTtsFieldActive } from "../../platform/integrations/tts/tts-service";
+import { getTtsService, markTtsFieldActive, clearActiveTtsButton } from "../../platform/integrations/tts/tts-service";
 import { shouldSkipBackAutoplay } from "../../platform/integrations/tts/autoplay-policy";
 import { openCardAnchorInNote } from "../../platform/core/open-card-anchor";
 import { t } from "../../platform/translations/translator";
@@ -184,6 +184,7 @@ export class LearnKitReviewerView extends ItemView {
 
   // TTS: track what we've already spoken to avoid duplicate reads
   private _ttsLastSpokenKey = "";
+  private _activeAttachedAudio: HTMLAudioElement | null = null;
 
   private _cardPassesTtsGroupFilter(card: CardRecord, groupFilterRaw: string): boolean {
     const groupFilter = groupFilterRaw.trim().toLowerCase();
@@ -641,6 +642,10 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Replay the front of the current card (manual, ignores autoplay). */
   private _replayFront() {
+    if (this._activeAttachedAudio) {
+      this._stopAttachedAudio();
+      return;
+    }
     const tts = getTtsService();
     if (tts.isSupported && tts.isSpeaking) {
       tts.stop();
@@ -652,6 +657,10 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Replay the back of the current card (manual, ignores autoplay). */
   private _replayBack() {
+    if (this._activeAttachedAudio) {
+      this._stopAttachedAudio();
+      return;
+    }
     const tts = getTtsService();
     if (tts.isSupported && tts.isSpeaking) {
       tts.stop();
@@ -663,6 +672,7 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Replay just the MCQ question stem. */
   private _replayMcqQuestion() {
+    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
     const tts = getTtsService();
     if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
     const card = this.currentCard();
@@ -674,6 +684,7 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Replay just the MCQ numbered options. */
   private _replayMcqOptions() {
+    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
     const tts = getTtsService();
     if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
     const card = this.currentCard();
@@ -687,6 +698,7 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Replay just the MCQ correct answer. */
   private _replayMcqAnswer() {
+    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
     const tts = getTtsService();
     if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
     const card = this.currentCard();
@@ -700,6 +712,7 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Replay just the OQ question stem. */
   private _replayOqQuestion() {
+    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
     const tts = getTtsService();
     if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
     const card = this.currentCard();
@@ -711,6 +724,7 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Replay just the OQ steps (unnumbered). */
   private _replayOqSteps() {
+    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
     const tts = getTtsService();
     if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
     const card = this.currentCard();
@@ -724,6 +738,7 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Replay the OQ answer with correctness result. */
   private _replayOqAnswer() {
+    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
     const tts = getTtsService();
     if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
     const card = this.currentCard();
@@ -746,20 +761,79 @@ export class LearnKitReviewerView extends ItemView {
     return { steps: order.map((i) => steps[i]), order };
   }
 
+  private _stopAttachedAudio(clearButton = true): void {
+    if (this._activeAttachedAudio) {
+      try {
+        this._activeAttachedAudio.pause();
+        this._activeAttachedAudio.currentTime = 0;
+      } catch { /* ignore */ }
+      this._activeAttachedAudio = null;
+    }
+    if (clearButton) {
+      clearActiveTtsButton();
+    }
+  }
+
+  private _playAttachedAudio(card: CardRecord): void {
+    const ref = card.audioRef;
+    if (!ref) return;
+
+    // Stop any running TTS first
+    const tts = getTtsService();
+    if (tts.isSupported && tts.isSpeaking) tts.stop();
+
+    this._stopAttachedAudio(false);
+
+    const cleanRef = ref.replace(/^!\[\[/, "").replace(/\]\]$/, "").trim();
+    let file = this.app.vault.getAbstractFileByPath(cleanRef);
+    if (!(file instanceof TFile)) {
+      file = this.app.metadataCache.getFirstLinkpathDest(cleanRef, card.sourceNotePath || "") ?? null;
+    }
+    if (!(file instanceof TFile)) {
+      clearActiveTtsButton();
+      return;
+    }
+
+    const src = this.app.vault.getResourcePath(file);
+    const audioEl = new Audio(src);
+    this._activeAttachedAudio = audioEl;
+
+    const cleanup = () => {
+      if (this._activeAttachedAudio === audioEl) {
+        this._activeAttachedAudio = null;
+      }
+      clearActiveTtsButton();
+    };
+
+    audioEl.addEventListener("ended", cleanup);
+    audioEl.addEventListener("error", cleanup);
+
+    audioEl.play().catch(() => {
+      cleanup();
+    });
+  }
+
   /**
    * Internal: actually speak the front of the card.
    * @param force When true, skip the dedup key check (used for replay).
    */
   private _doSpeakFront(card: CardRecord, force = false) {
+    const key = `front:${card.id}`;
+    if (!force && this._ttsLastSpokenKey === key) return;
+
+    // Prefer attached audio file over TTS
+    if (card.audioRef) {
+      this._ttsLastSpokenKey = key;
+      this._playAttachedAudio(card);
+      return;
+    }
+
     const audio = this.plugin.settings?.audio;
     if (!audio) return;
     if (!this._canUseTtsForCard(card)) return;
 
     const tts = getTtsService();
     if (!tts.isSupported) return;
-
-    const key = `front:${card.id}`;
-    if (!force && this._ttsLastSpokenKey === key) return;
 
     const cid = `${card.id}-question`;
 
@@ -819,15 +893,22 @@ export class LearnKitReviewerView extends ItemView {
    * @param force When true, skip the dedup key check (used for replay).
    */
   private _doSpeakBack(card: CardRecord, force = false) {
+    const key = `back:${card.id}`;
+    if (!force && this._ttsLastSpokenKey === key) return;
+
+    // Prefer attached audio file over TTS
+    if (card.audioRef) {
+      this._ttsLastSpokenKey = key;
+      this._playAttachedAudio(card);
+      return;
+    }
+
     const audio = this.plugin.settings?.audio;
     if (!audio) return;
     if (!this._canUseTtsForCard(card)) return;
 
     const tts = getTtsService();
     if (!tts.isSupported) return;
-
-    const key = `back:${card.id}`;
-    if (!force && this._ttsLastSpokenKey === key) return;
 
     const cid = `${card.id}-answer`;
 
@@ -1303,7 +1384,8 @@ export class LearnKitReviewerView extends ItemView {
     this._titleStripEl = null;
     this._titleSubtitleEl = null;
     this._titleTimerHostEl = null;
-    // Stop any ongoing TTS
+    // Stop any ongoing TTS or attached audio
+    this._stopAttachedAudio();
     getTtsService().stop();
     await Promise.resolve();
   }
@@ -2038,7 +2120,8 @@ export class LearnKitReviewerView extends ItemView {
   private async nextCard(_userInitiated: boolean) {
     if (!this.session) return;
 
-    // Stop any ongoing TTS before moving to next card
+    // Stop any ongoing TTS or attached audio before moving to next card
+    this._stopAttachedAudio();
     getTtsService().stop();
     this._ttsLastSpokenKey = "";
 
@@ -2181,6 +2264,7 @@ export class LearnKitReviewerView extends ItemView {
     this.clearUndo();
     this.resetTiming();
     this._clearPendingHotspotAttempt();
+    this._stopAttachedAudio();
     getTtsService().stop();
     this._ttsLastSpokenKey = "";
 
@@ -2778,7 +2862,7 @@ export class LearnKitReviewerView extends ItemView {
         const infoPresent = activeCard ? this.hasInfoField(activeCard) : false;
         const showInfo =
           !!this.plugin.settings.study.showInfoByDefault || (this.showAnswer && infoPresent);
-        const ttsEnabledForCard = this._canUseTtsForCard(activeCard);
+        const ttsEnabledForCard = this._canUseTtsForCard(activeCard) || !!activeCard?.audioRef;
 
         const practiceMode = this.isPracticeSession();
         const canStartPractice = !this._isCoachSession && !practiceMode && !activeCard && this.canStartPractice(this.session.scope);
@@ -3060,7 +3144,7 @@ export class LearnKitReviewerView extends ItemView {
     const infoPresent = activeCard ? this.hasInfoField(activeCard) : false;
     const showInfo =
       !!this.plugin.settings.study.showInfoByDefault || (this.showAnswer && infoPresent);
-    const ttsEnabledForCard = this._canUseTtsForCard(activeCard);
+    const ttsEnabledForCard = this._canUseTtsForCard(activeCard) || !!activeCard?.audioRef;
 
     const practiceMode = this.isPracticeSession();
     const canStartPractice = !this._isCoachSession && !practiceMode && !activeCard && this.canStartPractice(this.session.scope);

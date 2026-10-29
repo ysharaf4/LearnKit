@@ -344,12 +344,12 @@ export function TopicMasteryCard(props: {
         <>
           <div className="w-full flex-1 learnkit-analytics-chart">
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart isAnimationActive={false} data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }} layout="vertical">
+              <BarChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
                 <XAxis type="number" domain={[0, scoreDomainMax]} tick={{ fontSize: 12 }} />
                 <YAxis dataKey="key" type="category" hide />
                 <Tooltip content={tooltip} isAnimationActive={false} />
-                <Bar dataKey="score" fill="var(--chart-accent-1)" radius={[0, 4, 4, 0]} />
+                <Bar isAnimationActive={false} dataKey="score" fill="var(--chart-accent-1)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

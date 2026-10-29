@@ -97,6 +97,7 @@ export type ParsedCard = {
 
   // shared
   info: string | null;
+  audioRef: string | null;
 
   sourceNotePath: string;
   sourceStartLine: number;
@@ -133,7 +134,8 @@ type CurrentFieldKey =
   | "hqSrc"
   | "hqRegionsRaw"
   | "interactionMode"
-  | "info";
+  | "info"
+  | "audioRef";
 
 function computeFenceMask(lines: string[]): boolean[] {
   const inside: boolean[] = new Array<boolean>(lines.length).fill(false);
@@ -325,6 +327,7 @@ function makeEmptyCard(
     comboMode: null,
 
     info: null,
+    audioRef: null,
 
     sourceNotePath: notePath,
     sourceStartLine: startLine,
@@ -415,6 +418,7 @@ export function parseCardsFromText(
         "ioSrc",
         "ioOcclusionsRaw",
         "info",
+        "audioRef",
       ] as const
     ).forEach((k) => {
       if (current && current[k]) current[k] = normaliseMultiline(current[k]);
@@ -965,6 +969,15 @@ export function parseCardsFromText(
         current.a = null;
         appendToField(current, "a", chunk);
         pipeField = closed ? null : "a";
+        currentField = null;
+        continue;
+      }
+
+      // AU field — audio file attachment
+      if (key === "AU") {
+        current.audioRef = null;
+        appendToField(current, "audioRef", chunk);
+        pipeField = closed ? null : "audioRef";
         currentField = null;
         continue;
       }
