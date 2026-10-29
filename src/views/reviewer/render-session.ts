@@ -585,7 +585,7 @@ function makeHeaderMenu(opts: {
   menu.className = "learnkit flex flex-col";
   menu.setAttribute("role", "menu");
   menu.id = `${id}-menu`;
-  
+
   panel.appendChild(menu);
 
   const addItem = (label: string, hotkey: string | null, onClick: () => void, disabled = false, ariaLabel?: string) => {
@@ -1142,12 +1142,12 @@ export function renderSessionMode(args: Args) {
   const isPhoneMobile = activeDocument.body.classList.contains("is-phone");
   const applyAOS = !!args.applyAOS;
   const delayMs = Number.isFinite(args.aosDelayMs) ? Number(args.aosDelayMs) : applyAOS ? 100 : 0;
-  
+
   const canUndo = !!args.canUndo && typeof args.undoLast === "function";
   const hasStartPractice = typeof args.startPractice === "function";
   const canStartPractice = !practiceMode && (!!args.canStartPractice || hasStartPractice);
   const hasCardsInScope = args.hasCardsInScope !== false;
-  
+
   const card = args.currentCard();
   const id = card ? String(card.id) : "";
   const graded = args.session?.graded?.[id] || null;
@@ -1466,7 +1466,7 @@ export function renderSessionMode(args: Args) {
     const frontContent = (isBackDirection || isOldReversed) ? (card.a || "") : (card.q || "");
     const backContent = (isBackDirection || isOldReversed) ? (card.q || "") : (card.a || "");
     const replayFront = (card.type === "basic" || card.type === "combo-child") ? args.ttsReplayFront : undefined;
-    const replayBack = (card.type === "basic" || card.type === "combo-child") ? args.ttsReplayBack : undefined;
+    // const replayBack = (card.type === "basic" || card.type === "combo-child") ? args.ttsReplayBack : undefined;
 
     section.appendChild(labelRow(t(args.interfaceLanguage, "ui.common.question", "Question"), replayFront));
     section.appendChild(renderMdBlock("learnkit-q", convertInlineDisplayMath(frontContent)));
