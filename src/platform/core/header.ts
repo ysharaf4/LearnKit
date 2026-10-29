@@ -13,7 +13,7 @@
  *   - createViewHeader — factory function that wires a LearnKitHeader to any ItemView
  */
 import { MAX_CONTENT_WIDTH, VIEW_TYPE_ANALYTICS, VIEW_TYPE_BROWSER, VIEW_TYPE_REVIEWER, VIEW_TYPE_HOME, VIEW_TYPE_SETTINGS, VIEW_TYPE_NOTE_REVIEW, VIEW_TYPE_EXAM_GENERATOR, VIEW_TYPE_COACH } from "./constants";
-import { App, ItemView, Notice, WorkspaceLeaf, setIcon } from "obsidian";
+import { App, ItemView, Notice, Platform, WorkspaceLeaf, setIcon } from "obsidian";
 import { log } from "./logger";
 import { placePopover, queryFirst, setCssProps } from "./ui";
 import { clearNode } from "./shared-utils";
@@ -56,6 +56,12 @@ type Deps = {
 /** Null-safe alias for clearNode. */
 function clearChildren(node: HTMLElement | null) {
   clearNode(node);
+}
+
+function isPhoneLayout(): boolean {
+  if (typeof Platform !== "undefined" && Platform.isPhone) return true;
+  if (typeof activeDocument !== "undefined" && activeDocument.body?.classList?.contains("is-phone")) return true;
+  return false;
 }
 
 export class LearnKitHeader {
@@ -415,7 +421,8 @@ export class LearnKitHeader {
       (this.deps.containerEl ? queryFirst(this.deps.containerEl, ".view-header") : null);
     const availableWidth = header?.clientWidth ?? this.deps.containerEl?.clientWidth ?? 0;
     const hide =
-      availableWidth > 0 ? availableWidth <= MAX_CONTENT_WIDTH : typeof window !== "undefined" && window.innerWidth <= MAX_CONTENT_WIDTH;
+      isPhoneLayout() ||
+      (availableWidth > 0 ? availableWidth <= 640 : typeof window !== "undefined" && window.innerWidth <= 640);
     this.widthBtnEl.classList.toggle("learnkit-is-hidden", hide);
     this.widthBtnEl.setAttribute("aria-label", this.tx("ui.header.expandCollapse", "Expand / collapse page"));
     this.widthBtnEl.setAttribute("data-tooltip-position", "bottom");
@@ -699,12 +706,12 @@ export class LearnKitHeader {
     this.topNavWrapperEl = learnkitWrapper;
     root.classList.add("is-open");
 
-    const isMobile = activeDocument.body.classList.contains("is-mobile");
+    const isPhone = isPhoneLayout();
     const place = () => {
       placePopover({
         trigger, panel, popoverEl: root,
         setWidth: false,
-        align: isMobile ? "right" : "left",
+        align: isPhone ? "right" : "left",
       });
     };
 
@@ -745,9 +752,9 @@ export class LearnKitHeader {
   }
 
   private installHeaderDropdownNav(active: LearnKitHeaderPage) {
-    const isMobile = activeDocument.body.classList.contains("is-mobile");
+    const isPhone = isPhoneLayout();
     // Render the page-switcher in the left nav area.
-    const navHost = isMobile
+    const navHost = isPhone
       ? ((this.deps.containerEl.querySelector<HTMLElement>(":scope > .view-header .view-actions")) ??
           (this.deps.containerEl.querySelector<HTMLElement>(".view-header .view-actions")))
       : ((this.deps.containerEl.querySelector<HTMLElement>(
@@ -770,14 +777,14 @@ export class LearnKitHeader {
     navTrigger.type = "button";
     navTrigger.id = `${this.headerNavId}-trigger`;
     navTrigger.className = "learnkit-btn-toolbar h-7 px-2 text-xs inline-flex items-center gap-2";
-    if (isMobile) navTrigger.classList.add("learnkit-mobile-nav-trigger", "learnkit-mobile-nav-trigger");
+    if (isPhone) navTrigger.classList.add("learnkit-mobile-nav-trigger", "learnkit-mobile-nav-trigger");
     navTrigger.setAttribute("aria-haspopup", "menu");
     navTrigger.setAttribute("aria-expanded", "false");
     navTrigger.setAttribute("aria-label", this.tx("ui.header.openMenu", "Open menu"));
     navTrigger.setAttribute("data-tooltip-position", "bottom");
     navRoot.appendChild(navTrigger);
 
-    if (!isMobile) {
+    if (!isPhone) {
       const trigText = makeEl("span", this.deps.containerEl.ownerDocument);
       trigText.className = "truncate";
       trigText.textContent = this.pageLabel(active);
@@ -787,7 +794,7 @@ export class LearnKitHeader {
     const trigIcon = makeEl("span", this.deps.containerEl.ownerDocument);
     trigIcon.className = "inline-flex items-center justify-center [&_svg]:size-4";
     trigIcon.setAttribute("aria-hidden", "true");
-    setIcon(trigIcon, isMobile ? "menu" : "chevron-down");
+    setIcon(trigIcon, isPhone ? "menu" : "chevron-down");
     navTrigger.appendChild(trigIcon);
 
     navTrigger.addEventListener("click", (ev) => {
