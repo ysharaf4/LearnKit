@@ -1472,7 +1472,7 @@ export function renderSessionMode(args: Args) {
     section.appendChild(renderMdBlock("learnkit-q", convertInlineDisplayMath(frontContent)));
 
     if (args.showAnswer || graded) {
-      section.appendChild(labelRow(t(args.interfaceLanguage, "ui.common.answer", "Answer"), replayBack));
+      section.appendChild(labelRow(t(args.interfaceLanguage, "ui.common.answer", "Answer")));
       section.appendChild(renderMdBlock("learnkit-a", convertInlineDisplayMath(backContent)));
     }
   } else if (card.type === "cloze" || card.type === "cloze-child") {
