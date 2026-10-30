@@ -2326,7 +2326,9 @@ export class LearnKitReviewerView extends ItemView {
 
     if (this.mode !== "session" || !this.session) return;
 
-    if (ev.key === "Escape" && this._moreOpen) {
+    const isEscape = ev.key === "Escape" || ev.code === "Escape";
+
+    if (isEscape && this._moreOpen) {
       ev.preventDefault();
       ev.stopPropagation();
       closeMoreMenuImpl(this);
@@ -2391,6 +2393,20 @@ export class LearnKitReviewerView extends ItemView {
 
     const id = String(card.id);
     const graded = this.session.graded[id] || null;
+
+    if (isEscape) {
+      if (!graded && isSkipEnabled(this.plugin) && this.showAnswer) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeMoreMenuImpl(this);
+        this.doSkipCurrentCard({
+          uiSource: "kbd-esc",
+          uiKey: 27,
+          uiButtons: isFourButtonMode(this.plugin) ? 4 : 2,
+        });
+        return;
+      }
+    }
 
     if (ev.key === "q" || ev.key === "Q" || ev.code === "KeyQ") {
       if (ev.metaKey || ev.ctrlKey) return;
@@ -2760,15 +2776,6 @@ export class LearnKitReviewerView extends ItemView {
 
         if (this.showAnswer && this.isPracticeSession()) {
           void this.nextCard(true);
-          return;
-        }
-
-        if (this.showAnswer && isSkipEnabled(this.plugin)) {
-          this.doSkipCurrentCard({
-            uiSource: "kbd-enter",
-            uiKey: 13,
-            uiButtons: isFourButtonMode(this.plugin) ? 4 : 2,
-          });
           return;
         }
 

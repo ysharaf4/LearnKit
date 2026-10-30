@@ -679,7 +679,7 @@ function makeHeaderMenu(opts: {
     false,
     tx("ui.reviewer.more.aria.exitToDecks", "Exit back to deck selector"),
   );
-  if (opts.canSkip) addItem("Skip card", "K", opts.onSkip);
+  if (opts.canSkip) addItem("Skip card", "Esc", opts.onSkip);
 
   let cleanup: (() => void) | null = null;
 
@@ -1760,10 +1760,10 @@ export function renderSessionMode(args: Args) {
       if (skipEnabled) {
         const skipBtn = makeTextButton({
           label: "Skip",
-          title: "Skip card (↵)",
+          title: "Skip card (Esc)",
           className: "learnkit-btn-toolbar",
-          onClick: () => args.skipCurrentCard({ uiSource: "skip-btn", uiKey: 13, uiButtons: four ? 4 : 2 }),
-          kbd: "↵",
+          onClick: () => args.skipCurrentCard({ uiSource: "skip-btn", uiKey: 27, uiButtons: four ? 4 : 2 }),
+          kbd: "Esc",
         });
         skipBtn.dataset.bcAction = "skip-card";
         mainRow.appendChild(skipBtn);

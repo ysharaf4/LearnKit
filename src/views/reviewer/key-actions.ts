@@ -44,6 +44,7 @@ export const REVIEWER_IMPLEMENTED_KEYS: readonly string[] = [
   "M",
   "O",
   "R",
+  "Esc",
 ];
 
 /** Minimal shape of a keyboard event we care about (keeps this module pure). */
