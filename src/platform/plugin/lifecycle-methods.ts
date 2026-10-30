@@ -314,6 +314,7 @@ export function WithLifecycleMethods<T extends Constructor<LearnKitPluginBase>>(
         initMobileKeyboardHandler();
 
         if (Platform.isPhone) activeDocument.body.classList.add("is-phone");
+        if (Platform.isTablet) activeDocument.body.classList.add("is-tablet");
 
         // Drop any Guide dropdown portal stranded on <body> by a previous instance
         // (GitHub #205) before we build our own UI.

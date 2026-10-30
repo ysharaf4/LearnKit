@@ -1743,6 +1743,30 @@ body.is-mobile .learnkit .lk-browser-controls-row :is(
   gap: 6px ;
 }
 
+/* iPad / Tablet specific toolbar & dropdown controls */
+body.is-tablet .learnkit .lk-browser-controls-row :is(
+  .learnkit-btn-toolbar,
+  .lk-browser-action-btn
+) {
+  height: 34px;
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: var(--font-ui-small);
+  gap: 6px;
+}
+
+body.is-tablet .learnkit .lk-browser-controls-row {
+  gap: 8px;
+}
+
+body.is-tablet .learnkit .lk-browser-controls-card {
+  padding: 10px 16px;
+}
+
+body.is-tablet .learnkit .learnkit-dd-popover .learnkit-dd-panel {
+  min-width: 220px;
+}
+
 body.is-phone .learnkit .lk-browser-controls-row .lk-browser-filter .learnkit-btn-toolbar {
   justify-content: space-between;
 }

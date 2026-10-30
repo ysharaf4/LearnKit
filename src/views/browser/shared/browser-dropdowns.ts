@@ -164,13 +164,23 @@ export function makeDropdownMenu<T extends string>(
     }
   };
 
-  const place = () => placePopover({
-    trigger, panel, popoverEl: popover,
-    width: activeDocument.body.classList.contains("is-mobile")
-      ? Math.max(0, Math.round(trigger.getBoundingClientRect().width))
-      : Math.max(220, args.widthPx ?? 240),
-    dropUp: args.dropUp,
-  });
+  const place = () => {
+    const isPhone = activeDocument.body.classList.contains("is-phone") ||
+      (!activeDocument.body.classList.contains("is-tablet") && window.innerWidth <= 640);
+    const r = trigger.getBoundingClientRect();
+    const targetWidth = isPhone
+      ? Math.max(0, Math.round(r.width))
+      : Math.max(220, args.widthPx ?? 240);
+    const wouldOverflow = !isPhone && (r.left + targetWidth > window.innerWidth - 8);
+    placePopover({
+      trigger,
+      panel,
+      popoverEl: popover,
+      width: targetWidth,
+      dropUp: args.dropUp,
+      align: wouldOverflow ? "right" : "left",
+    });
+  };
 
   let cleanup: (() => void) | null = null;
 
@@ -406,12 +416,22 @@ export function makeColumnsDropdown(
     }
   };
 
-  const place = () => placePopover({
-    trigger, panel, popoverEl: popover,
-    width: activeDocument.body.classList.contains("is-mobile")
-      ? Math.max(0, Math.round(trigger.getBoundingClientRect().width))
-      : Math.max(220, args.widthPx ?? 260),
-  });
+  const place = () => {
+    const isPhone = activeDocument.body.classList.contains("is-phone") ||
+      (!activeDocument.body.classList.contains("is-tablet") && window.innerWidth <= 640);
+    const r = trigger.getBoundingClientRect();
+    const targetWidth = isPhone
+      ? Math.max(0, Math.round(r.width))
+      : Math.max(220, args.widthPx ?? 260);
+    const wouldOverflow = !isPhone && (r.left + targetWidth > window.innerWidth - 8);
+    placePopover({
+      trigger,
+      panel,
+      popoverEl: popover,
+      width: targetWidth,
+      align: wouldOverflow ? "right" : "left",
+    });
+  };
 
   let cleanup: (() => void) | null = null;
   let autoCloseTimer: number | null = null;
