@@ -301,6 +301,16 @@ export function injectMoreMenu(view: LearnKitReviewerView) {
   openItem.dataset.learnkitAction = "open-note";
   menu.appendChild(openItem);
 
+  const replayItem = createMenuItem(
+    tx("ui.shortcuts.replayAudio", "Replay audio"),
+    "R",
+    () => (view as unknown as { _replayFront?: () => void })._replayFront?.(),
+    false,
+    "Replay audio",
+  );
+  replayItem.dataset.learnkitAction = "replay-audio";
+  menu.appendChild(replayItem);
+
   const editItem = createMenuItem(tx("ui.reviewer.more.edit", "Edit"), "E", () => view.openEditModalForCurrentCard(), false, "Edit flashcard");
   editItem.dataset.learnkitAction = "edit-card";
   menu.appendChild(editItem);

@@ -529,7 +529,7 @@ function readOqOrderFromStepList(root: ParentNode, expectedLength: number): numb
 
 // --- Dropdown menu (optional header actions) ---------------------------------
 
-function makeHeaderMenu(opts: {
+export function makeHeaderMenu(opts: {
   interfaceLanguage?: string;
   canUndo: boolean;
   onUndo: () => void;
@@ -539,6 +539,8 @@ function makeHeaderMenu(opts: {
   onBury: () => void;
   onSuspend: () => void;
   onExit: () => void;
+  canReplayAudio?: boolean;
+  onReplayAudio?: () => void;
   compactTrigger?: boolean;
 }) {
   const tx = (token: string, fallback: string, vars?: Record<string, string | number>) =>
@@ -649,6 +651,15 @@ function makeHeaderMenu(opts: {
       window.learnkitOpenCurrentCardNote,
       false,
       tx("ui.reviewer.more.aria.openInNote", "Open flashcard in parent note"),
+    );
+  }
+  if (opts.onReplayAudio) {
+    addItem(
+      tx("ui.shortcuts.replayAudio", "Replay audio"),
+      "R",
+      opts.onReplayAudio,
+      !opts.canReplayAudio,
+      tx("ui.shortcuts.replayAudio", "Replay audio"),
     );
   }
   addItem(
@@ -1864,6 +1875,8 @@ export function renderSessionMode(args: Args) {
       onSuspend: () => args.suspendCurrentCard?.(),
       canSkip: skipEnabled && !!card && !graded,
       onSkip: () => args.skipCurrentCard({ uiSource: "footer-menu" }),
+      canReplayAudio: !!card,
+      onReplayAudio: () => args.ttsReplayFront?.(),
       onExit: () => args.backToDecks(),
       compactTrigger: isPhoneMobile,
       interfaceLanguage: args.interfaceLanguage,
