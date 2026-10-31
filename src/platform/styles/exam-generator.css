@@ -1400,34 +1400,219 @@ body.is-phone .learnkit .learnkit-exam-generator-title-strip .learnkit-inline-se
   outline-offset: 2px;
 }
 
+/* ---- Exam Test Editor Modal ---- */
+
+.learnkit .lk-modals.modal.learnkit-exam-editor-modal,
+.learnkit .learnkit-exam-editor-modal {
+  width: min(740px, 100%);
+  max-width: min(740px, 95%);
+  height: 85vh;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.learnkit .lk-modals.modal.learnkit-exam-editor-modal .modal-header {
+  padding: 1.25rem 1.5rem 0.5rem;
+  margin: 0;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.learnkit .lk-modals.modal.learnkit-exam-editor-modal .modal-content,
+.learnkit .learnkit-exam-editor-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  padding: 0.5rem 1.5rem 1.25rem;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.learnkit .learnkit-exam-editor-title {
+  margin: 0 0 0.75rem 0;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
 .learnkit .learnkit-exam-editor-form {
   border: 0;
   padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
 }
 
 .learnkit .learnkit-exam-editor-question {
-  margin-block: 1rem;
+  margin-block: 0.5rem;
+  padding: 1rem;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-md);
+  background-color: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.learnkit .learnkit-exam-editor-question-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.learnkit .learnkit-exam-editor-legend {
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  padding: 0 0.25rem;
 }
 
 .learnkit .learnkit-exam-editor-field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  margin-block: 0.75rem;
   flex: 1;
   min-width: 0;
 }
 
-.learnkit .learnkit-exam-editor-field textarea {
-  min-height: 5rem;
+.learnkit .learnkit-exam-editor-field-label {
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.learnkit .learnkit-exam-editor-input,
+.learnkit .learnkit-exam-editor-select {
+  height: 2.25rem;
+}
+
+.learnkit .learnkit-exam-editor-textarea {
+  min-height: 4.5rem;
   resize: vertical;
+  font-family: inherit;
+  font-size: var(--font-ui-small);
+}
+
+.learnkit .learnkit-exam-editor-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .learnkit .learnkit-exam-editor-option {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.65rem;
+}
+
+.learnkit .learnkit-exam-editor-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-muted);
+  min-width: 84px;
+  flex-shrink: 0;
+}
+
+.learnkit .learnkit-exam-editor-option-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 2.25rem;
+}
+
+.learnkit .learnkit-exam-editor-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.learnkit .learnkit-exam-editor-actions .learnkit-btn-save {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: 500;
+  padding: 0.45rem 1.15rem;
+  border-radius: var(--radius-md);
+}
+
+.learnkit .learnkit-exam-editor-actions .learnkit-btn-save:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
+.learnkit .learnkit-exam-editor-actions .learnkit-btn-cancel {
+  padding: 0.45rem 1rem;
+  color: var(--text-normal);
+  border-radius: var(--radius-md);
+}
+
+.learnkit .learnkit-exam-editor-error {
+  color: var(--text-error, #f87171);
+  font-size: var(--font-ui-smaller);
+  padding: 0.25rem 0;
+  min-height: 1.25rem;
+}
+
+.learnkit .learnkit-exam-editor-hint {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin: 0.25rem 0 0.5rem 0;
+}
+
+.learnkit .learnkit-exam-editor-btn-add {
+  align-self: flex-start;
+  font-size: var(--font-ui-smaller);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.learnkit .learnkit-exam-editor-btn-add-question {
+  align-self: flex-start;
+  font-weight: 500;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-md);
+  margin-top: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.learnkit .learnkit-exam-editor-btn-remove {
+  color: var(--text-error, #f87171);
+  background: transparent;
+  padding: 0.3rem 0.6rem;
+  font-size: var(--font-ui-smaller);
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.learnkit .learnkit-exam-editor-btn-remove:hover {
+  background-color: var(--background-modifier-hover);
 }

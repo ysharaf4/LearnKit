@@ -2487,8 +2487,7 @@ export class LearnKitExamGeneratorView extends ItemView {
 
     this._takingKeydownHandler = (evt: KeyboardEvent) => {
       if (this._mode !== "taking") return;
-      if (evt.defaultPrevented || evt.isComposing || evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return;
-      if (evt.key !== "ArrowLeft" && evt.key !== "ArrowRight") return;
+      if (evt.defaultPrevented || evt.isComposing) return;
 
       const rootEl = this._rootEl;
       if (!rootEl) return;
@@ -2502,21 +2501,78 @@ export class LearnKitExamGeneratorView extends ItemView {
       const isDocumentLevelTarget = !targetEl || targetEl === activeDocument.body || targetEl === activeDocument.documentElement;
 
       if (!eventInView && !focusInView && (!activeLeafMatches || !isDocumentLevelTarget)) return;
+
+      // 1) Submit shortcut: Mod+Enter (Cmd+Enter or Ctrl+Enter) works from anywhere, even inside text areas
+      const isMod = evt.metaKey || evt.ctrlKey;
+      if (isMod && evt.key === "Enter" && !evt.altKey && !evt.shiftKey) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        void this._submitExam(false);
+        return;
+      }
+
+      // If user holds modifier keys, do not intercept other keys
+      if (evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return;
+
+      // When focused in a text entry element (like an SAQ answer textarea), let typing happen naturally
       if ((focusEl && this._isTakingTextEntryElement(focusEl)) || (targetEl && this._isTakingTextEntryElement(targetEl))) return;
 
+      // 2) Navigation: ArrowLeft
       if (evt.key === "ArrowLeft") {
         if (!this._canGoToPreviousExamQuestion()) return;
         evt.preventDefault();
+        evt.stopPropagation();
         this._goToPreviousExamQuestion();
         return;
       }
 
-      if (!this._canGoToNextExamQuestion()) return;
-      evt.preventDefault();
-      this._goToNextExamQuestion();
+      // 3) Navigation: ArrowRight
+      if (evt.key === "ArrowRight") {
+        if (!this._canGoToNextExamQuestion()) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        this._goToNextExamQuestion();
+        return;
+      }
+
+      // 4) Advance on Enter: next question, or submit on last question
+      if (evt.key === "Enter") {
+        evt.preventDefault();
+        evt.stopPropagation();
+        if (this._currentIndex >= this._questions.length - 1) {
+          void this._submitExam(false);
+        } else if (this._canGoToNextExamQuestion()) {
+          this._goToNextExamQuestion();
+        }
+        return;
+      }
+
+      // 5) Number keys 1-9: Select or toggle MCQ option
+      if (/^[1-9]$/.test(evt.key)) {
+        const optIndex = Number(evt.key) - 1;
+        if (this._selectExamOption(optIndex)) {
+          evt.preventDefault();
+          evt.stopPropagation();
+        }
+        return;
+      }
     };
 
     activeDocument.addEventListener("keydown", this._takingKeydownHandler, true);
+  }
+
+  private _selectExamOption(index: number): boolean {
+    const rootEl = this._rootEl;
+    if (!rootEl) return false;
+    const buttons = rootEl.querySelectorAll<HTMLButtonElement>(
+      ".learnkit-exam-generator-runner-options .learnkit-exam-generator-option-button",
+    );
+    const target = buttons[index];
+    if (target) {
+      target.click();
+      return true;
+    }
+    return false;
   }
 
   private _uninstallTakingKeydownHandler(): void {
