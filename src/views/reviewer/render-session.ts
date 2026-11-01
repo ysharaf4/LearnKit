@@ -12,7 +12,7 @@ import { createOqReorderPreviewController } from "../../platform/core/oq-reorder
 import { setCssProps } from "../../platform/core/ui";
 import { applyInlineMarkdown } from "../../platform/integrations/anki/anki-mapper";
 import { setIcon } from "obsidian";
-import { bindAudioPlayingState as bindTtsPlayingState, markAudioButtonActive as markTtsButtonActive, clearActiveAudioButton as clearActiveTtsButton } from "../../platform/integrations/audio/audio-player";
+import { bindAudioPlayingState as bindTtsPlayingState, markAudioButtonActive as markTtsButtonActive, clearActiveAudioButton as clearActiveTtsButton, isVaultAudioPlaying } from "../../platform/integrations/audio/audio-player";
 import { renderStudySessionHeader } from "./study-session-header";
 import type { Scope, Session, Rating } from "./types";
 import type { CardRecord } from "../../platform/core/store";
@@ -1425,7 +1425,11 @@ export function renderSessionMode(args: Args) {
 
       actions.appendChild(btn);
       row.appendChild(actions);
+      setIcon(btn, "volume-2");
       bindTtsPlayingState(btn);
+      if (isVaultAudioPlaying()) {
+        markTtsButtonActive(btn);
+      }
     }
     return row;
   };
@@ -1478,7 +1482,6 @@ export function renderSessionMode(args: Args) {
     const frontContent = (isBackDirection || isOldReversed) ? (card.a || "") : (card.q || "");
     const backContent = (isBackDirection || isOldReversed) ? (card.q || "") : (card.a || "");
     const replayFront = (card.type === "basic" || card.type === "combo-child") ? args.ttsReplayFront : undefined;
-    // const replayBack = (card.type === "basic" || card.type === "combo-child") ? args.ttsReplayBack : undefined;
 
     section.appendChild(labelRow(t(args.interfaceLanguage, "ui.common.question", "Question"), replayFront));
     section.appendChild(renderMdBlock("learnkit-q", convertInlineDisplayMath(frontContent)));

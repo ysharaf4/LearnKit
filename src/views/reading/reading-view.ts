@@ -43,6 +43,7 @@ import {
   stopActiveVaultAudio,
   bindAudioPlayingState,
   markAudioButtonActive,
+  isVaultAudioPlaying,
 } from "../../platform/integrations/audio/audio-player";
 import { hasCardAnchorForId } from "../../platform/core/identity";
 import { buildReadingFlashcardCloze } from "./reading-flashcard-cloze";
@@ -3053,7 +3054,7 @@ export function buildFlashcardContentHTML(card: LearnKitCard, options: { include
     const rawAudioRef = card.audioRef || (Array.isArray(card.fields?.AU) ? card.fields.AU[0] : card.fields?.AU);
     const audioRef = rawAudioRef ? String(rawAudioRef).trim() : null;
     const speaker = options.includeSpeakerButton && audioRef
-      ? `<button class="learnkit-flashcard-action-btn learnkit-flashcard-speak-btn" type="button" data-learnkit-tts-side="${side}" data-learnkit-audio-ref="${encodeURIComponent(audioRef)}" aria-label="${t(undefined, "ui.reading.flashcard.readAloud", "Read aloud")}" data-tooltip-position="top"></button>`
+      ? `<button class="learnkit-flashcard-action-btn learnkit-flashcard-speak-btn" type="button" data-learnkit-tts-side="${side}" data-learnkit-audio-ref="${encodeURIComponent(audioRef)}" aria-label="${t(undefined, "ui.reading.flashcard.readAloud", "Read aloud")}" data-tooltip-position="top"><span class="tts-icon-idle"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-volume-2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg></span></button>`
       : '';
     const edit = options.includeEditButton
       ? `<button class="learnkit-flashcard-action-btn learnkit-card-edit-btn" type="button" aria-label="${t(undefined, "ui.reading.flashcard.editCard", "Edit card")}" data-tooltip-position="top"></button>`
@@ -3296,6 +3297,10 @@ function setupFlashcardFlip(el: HTMLElement) {
     question.hidden = showingAnswer;
     answer.hidden = !showingAnswer;
     el.classList.toggle('learnkit-flashcard-flipped', showingAnswer);
+    if (isVaultAudioPlaying()) {
+      const activeBtn = (showingAnswer ? answer : question).querySelector<HTMLElement>(".learnkit-flashcard-speak-btn");
+      if (activeBtn) markAudioButtonActive(activeBtn);
+    }
   };
 
   const recalcHeight = () => {
@@ -3602,7 +3607,9 @@ function enhanceCardElement(
 
   const speakBtns = Array.from(el.querySelectorAll<HTMLElement>(".learnkit-flashcard-speak-btn"));
   for (const speakBtn of speakBtns) {
-    setIcon(speakBtn, "volume-2");
+    if (!speakBtn.querySelector("svg")) {
+      setIcon(speakBtn, "volume-2");
+    }
     speakBtn.tabIndex = 0;
     bindAudioPlayingState(speakBtn);
     speakBtn.addEventListener("click", (e) => {
@@ -3628,11 +3635,34 @@ function enhanceCardElement(
     });
 
     speakBtn.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter" && ev.key !== " ") return;
+      if (ev.key !== "Enter" && ev.key !== " " && ev.key.toLowerCase() !== "r") return;
       ev.preventDefault();
+      ev.stopPropagation();
       (ev.currentTarget as HTMLElement)?.click();
     });
   }
+
+  el.addEventListener("mouseenter", () => {
+    (window as unknown as { __learnkitHoverCard?: HTMLElement }).__learnkitHoverCard = el;
+  });
+  el.addEventListener("mouseleave", () => {
+    if ((window as unknown as { __learnkitHoverCard?: HTMLElement }).__learnkitHoverCard === el) {
+      delete (window as unknown as { __learnkitHoverCard?: HTMLElement }).__learnkitHoverCard;
+    }
+  });
+
+  el.addEventListener("keydown", (ev) => {
+    if (ev.key.toLowerCase() === "r" && !["INPUT", "TEXTAREA"].includes((ev.target as HTMLElement)?.tagName)) {
+      const activeSpeakBtn = el.querySelector<HTMLElement>(".learnkit-flashcard-question:not([hidden]) .learnkit-flashcard-speak-btn")
+        || el.querySelector<HTMLElement>(".learnkit-flashcard-answer:not([hidden]) .learnkit-flashcard-speak-btn")
+        || el.querySelector<HTMLElement>(".learnkit-flashcard-speak-btn");
+      if (activeSpeakBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        activeSpeakBtn.click();
+      }
+    }
+  });
 
   // Hook up toggles inside this card
   const toggles = el.querySelectorAll<HTMLButtonElement>('.learnkit-toggle-btn');
@@ -3722,6 +3752,30 @@ export function renderReadingViewPreviewCard(el: HTMLElement, card: LearnKitCard
     button.disabled = true;
     button.setAttribute("aria-disabled", "true");
     button.tabIndex = -1;
+  });
+}
+
+if (typeof window !== "undefined" && !(window as unknown as { __learnkitReadingRKeyBound?: boolean }).__learnkitReadingRKeyBound) {
+  (window as unknown as { __learnkitReadingRKeyBound?: boolean }).__learnkitReadingRKeyBound = true;
+  window.addEventListener("keydown", (ev: KeyboardEvent) => {
+    if (ev.key.toLowerCase() !== "r") return;
+    const target = ev.target as HTMLElement | null;
+    const tag = target?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+    if (target?.closest(".learnkit-session-container, .modal-container")) return;
+
+    const hoverCard = (window as unknown as { __learnkitHoverCard?: HTMLElement }).__learnkitHoverCard;
+    const cardEl = hoverCard || (document.activeElement?.closest(".learnkit-pretty-card.learnkit-macro-flashcards") as HTMLElement | null);
+    if (!cardEl) return;
+
+    const activeSpeakBtn = cardEl.querySelector<HTMLElement>(".learnkit-flashcard-question:not([hidden]) .learnkit-flashcard-speak-btn")
+      || cardEl.querySelector<HTMLElement>(".learnkit-flashcard-answer:not([hidden]) .learnkit-flashcard-speak-btn")
+      || cardEl.querySelector<HTMLElement>(".learnkit-flashcard-speak-btn");
+    if (activeSpeakBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      activeSpeakBtn.click();
+    }
   });
 }
 

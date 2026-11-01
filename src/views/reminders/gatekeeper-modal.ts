@@ -130,6 +130,18 @@ export class GatekeeperModal extends Modal {
       const card = this.cards[this.index];
       if (!card) return;
 
+      if (key === "r" && card.audioRef) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const replayBtn = this.modalEl.querySelector<HTMLElement>(".learnkit-tts-replay-btn");
+        if (replayBtn) {
+          replayBtn.click();
+        } else {
+          playVaultAudio(this.app, card.audioRef);
+        }
+        return;
+      }
+
       if (!this.reveal && key === "enter") {
         ev.preventDefault();
         ev.stopPropagation();
@@ -592,6 +604,7 @@ export class GatekeeperModal extends Modal {
       markAudioButtonActive(btn);
       playVaultAudio(this.app, card.audioRef!);
     });
+    setIcon(btn, "volume-2");
     bindAudioPlayingState(btn);
   }
 

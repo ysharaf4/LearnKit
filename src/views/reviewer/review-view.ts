@@ -53,6 +53,7 @@ import {
   stopActiveVaultAudio,
   markAudioButtonActive,
   clearActiveAudioButton,
+  isVaultAudioPlaying,
 } from "../../platform/integrations/audio/audio-player";
 import { openCardAnchorInNote } from "../../platform/core/open-card-anchor";
 import { t } from "../../platform/translations/translator";
@@ -621,16 +622,23 @@ export class LearnKitReviewerView extends ItemView {
   private _speakCardFront(card: CardRecord) {
     const audio = this.plugin.settings?.audio;
     if (!audio?.autoplay) return;
+    const key = `${card.id}:front`;
+    if (this._ttsLastSpokenKey === key) return;
+    this._ttsLastSpokenKey = key;
     this._doSpeakFront(card);
   }
 
   /**
    * Speak the back (answer) side of a card if audio is enabled for that card type.
    * Called when the answer is revealed. Gated on autoplay.
+   * Uses a dedup key so re-renders of the same back don't repeat.
    */
   private _speakCardBack(card: CardRecord) {
     const audio = this.plugin.settings?.audio;
     if (!audio?.autoplay) return;
+    const key = `${card.id}:back`;
+    if (this._ttsLastSpokenKey === key) return;
+    this._ttsLastSpokenKey = key;
     this._doSpeakBack(card);
   }
 
@@ -703,7 +711,35 @@ export class LearnKitReviewerView extends ItemView {
     if (!ref) return;
 
     this._stopAttachedAudio(false);
-    this._activeAttachedAudio = playVaultAudio(this.app, ref, card.sourceNotePath || "");
+
+    const activateBtns = () => {
+      const btns = this.containerEl?.querySelectorAll<HTMLElement>(".learnkit-tts-replay-btn");
+      if (btns && btns.length > 0) {
+        btns.forEach((b) => markAudioButtonActive(b));
+        return btns[0];
+      }
+      return null;
+    };
+
+    const targetBtn = activateBtns();
+
+    this._activeAttachedAudio = playVaultAudio(
+      this.app,
+      ref,
+      card.sourceNotePath || "",
+      () => {
+        this._stopAttachedAudio(true);
+      },
+      targetBtn || undefined,
+    );
+
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        if (isVaultAudioPlaying()) {
+          activateBtns();
+        }
+      });
+    }
   }
 
   private _canUseTtsForCard(card: CardRecord | null): boolean {
@@ -2131,7 +2167,11 @@ export class LearnKitReviewerView extends ItemView {
     if (k === "r") {
       ev.preventDefault();
       ev.stopPropagation();
-      this._replayFront();
+      if (this.showAnswer) {
+        this._replayBack();
+      } else {
+        this._replayFront();
+      }
       return;
     }
 
@@ -2699,8 +2739,19 @@ export class LearnKitReviewerView extends ItemView {
           rerender: () => this.render(),
         });
 
-        // TTS: speak front after render
-        if (activeCard && !this.showAnswer) this._speakCardFront(activeCard);
+        // TTS: sync active audio buttons and speak front/back after render
+        if (isVaultAudioPlaying()) {
+          const btns = this.containerEl?.querySelectorAll<HTMLElement>(".learnkit-tts-replay-btn");
+          btns?.forEach((b) => markAudioButtonActive(b));
+        }
+
+        if (activeCard) {
+          if (!this.showAnswer) {
+            this._speakCardFront(activeCard);
+          } else {
+            this._speakCardBack(activeCard);
+          }
+        }
 
         this._restoreFocus();
         return;
@@ -2983,8 +3034,19 @@ export class LearnKitReviewerView extends ItemView {
       rerender: () => this.render(),
     });
 
-    // TTS: speak front after render so OQ shuffled display order is initialized.
-    if (activeCard && !this.showAnswer) this._speakCardFront(activeCard);
+    // TTS: sync active audio buttons and speak front/back after render so OQ shuffled display order is initialized.
+    if (isVaultAudioPlaying()) {
+      const btns = this.containerEl?.querySelectorAll<HTMLElement>(".learnkit-tts-replay-btn");
+      btns?.forEach((b) => markAudioButtonActive(b));
+    }
+
+    if (activeCard) {
+      if (!this.showAnswer) {
+        this._speakCardFront(activeCard);
+      } else {
+        this._speakCardBack(activeCard);
+      }
+    }
 
     const renderedSessionHeader = queryFirst<HTMLElement>(sessionColumn ?? root, "[data-study-session-header]");
     const renderedSessionTimerRow = renderedSessionHeader?.querySelector<HTMLElement>("[data-study-session-timer-row]") ?? null;

@@ -1343,9 +1343,30 @@ padding: 0px ;
   pointer-events: auto;
 }
 
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:has(.learnkit-flashcard-speak-btn) {
+  opacity: 0.8;
+  pointer-events: auto;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:has(.learnkit-flashcard-speak-btn) .learnkit-card-edit-btn {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards :is(.learnkit-flashcard-question, .learnkit-flashcard-answer):hover .learnkit-flashcard-actions:has(.learnkit-flashcard-speak-btn) .learnkit-card-edit-btn,
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:focus-within .learnkit-card-edit-btn {
+  opacity: 0.7;
+  pointer-events: auto;
+}
+
 @media (hover: none) {
   .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions {
     opacity: 0.85;
+    pointer-events: auto;
+  }
+  .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:has(.learnkit-flashcard-speak-btn) .learnkit-card-edit-btn {
+    opacity: 0.7;
     pointer-events: auto;
   }
 }
@@ -1385,11 +1406,25 @@ padding: 0px ;
   min-width: 0;
   min-height: 0;
   margin-inline-start: auto;
+  cursor: pointer;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn .tts-icon-idle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn .tts-icon-playing,
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn .tts-icon-stop {
+  display: none;
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing) {
   color: var(--text-accent, var(--interactive-accent));
   opacity: 1;
+  border-radius: var(--radius-sm, 4px);
+  animation: learnkit-audio-pulse 1.6s cubic-bezier(0.25, 1, 0.5, 1) infinite;
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing) .tts-icon-idle {
@@ -1398,6 +1433,109 @@ padding: 0px ;
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing) .tts-icon-playing {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing) .learnkit-sound-wave {
+  display: inline-flex;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing):hover .learnkit-sound-wave {
+  display: none;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing):hover .tts-icon-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-sound-wave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5px;
+  height: 16px;
+  width: 16px;
+  animation: lk-wave-appear 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-sound-bar {
+  display: block;
+  width: 2.2px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  transform-origin: center;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-sound-bar:is(.bar-1, .learnkit-sound-bar-1) {
+  height: 7px;
+  animation: lk-soundbar-1 0.75s ease-in-out infinite alternate;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-sound-bar:is(.bar-2, .learnkit-sound-bar-2) {
+  height: 14px;
+  animation: lk-soundbar-2 0.75s ease-in-out infinite alternate 0.18s;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-sound-bar:is(.bar-3, .learnkit-sound-bar-3) {
+  height: 9px;
+  animation: lk-soundbar-3 0.75s ease-in-out infinite alternate 0.36s;
+}
+
+@keyframes lk-wave-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lk-soundbar-1 {
+  0% {
+    transform: scaleY(0.35);
+  }
+  100% {
+    transform: scaleY(1.3);
+  }
+}
+
+@keyframes lk-soundbar-2 {
+  0% {
+    transform: scaleY(0.25);
+  }
+  100% {
+    transform: scaleY(1.15);
+  }
+}
+
+@keyframes lk-soundbar-3 {
+  0% {
+    transform: scaleY(0.4);
+  }
+  100% {
+    transform: scaleY(1.35);
+  }
+}
+
+@keyframes learnkit-audio-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 120, 120, 255), 0.55);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(var(--interactive-accent-rgb, 120, 120, 255), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 120, 120, 255), 0);
+  }
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-action-btn:hover,

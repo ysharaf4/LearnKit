@@ -113,4 +113,88 @@ describe("Reviewer Card Reveal", () => {
     const answerBlock = container.querySelector(".learnkit-a");
     expect(answerBlock).not.toBeNull();
   });
+
+  it("renders animated waves on replay button when card is revealed while audio is playing", async () => {
+    window.HTMLMediaElement.prototype.play = vi.fn().mockImplementation(() => Promise.resolve());
+    window.HTMLMediaElement.prototype.pause = vi.fn();
+
+    const { playVaultAudio, stopActiveVaultAudio } = await import(
+      "../src/platform/integrations/audio/audio-player"
+    );
+
+    // Mock app vault for playVaultAudio
+    const dummyFile = { path: "audio/paris.mp3", extension: "mp3" };
+    const mockApp = {
+      vault: {
+        getAbstractFileByPath: vi.fn().mockReturnValue(dummyFile),
+        getResourcePath: vi.fn().mockReturnValue("app://local/audio/paris.mp3"),
+      },
+      metadataCache: {
+        getFirstLinkpathDest: vi.fn().mockReturnValue(dummyFile),
+      },
+    } as any;
+
+    // Start playing audio
+    playVaultAudio(mockApp, "audio/paris.mp3");
+
+    const container = document.createElement("div");
+    const audioCard: CardRecord = {
+      ...dummyCard,
+      audioRef: "audio/paris.mp3",
+    };
+
+    renderSessionMode({
+      container,
+      session: {
+        scope: { type: "vault", key: "all" },
+        queue: [audioCard],
+        index: 0,
+        graded: {},
+        interrupted: false,
+      },
+      showAnswer: true, // revealed
+      setShowAnswer: vi.fn(),
+      currentCard: () => audioCard,
+      backToDecks: vi.fn(),
+      nextCard: vi.fn(),
+      gradeCurrentRating: vi.fn(),
+      answerMcq: vi.fn(),
+      answerOq: vi.fn(),
+      showInfo: false,
+      clearTimer: vi.fn(),
+      clearCountdown: vi.fn(),
+      getNextDueInScope: () => null,
+      startCountdown: vi.fn(),
+      getClozeRenderOptions: () => ({ mode: "standard" }),
+      renderClozeFront: vi.fn(),
+      renderMarkdownInto: vi.fn(async (el, md) => {
+        el.textContent = md;
+      }),
+      randomizeMcqOptions: false,
+      randomizeOqOrder: false,
+      rerender: vi.fn(),
+      skipCurrentCard: vi.fn(),
+      ttsEnabled: true,
+      ttsReplayFront: vi.fn(),
+      ttsReplayBack: vi.fn(),
+    });
+
+    const replayBtns = container.querySelectorAll<HTMLElement>(".learnkit-tts-replay-btn");
+    // Only one speaker icon should be rendered on reveal (no duplicate on Answer)
+    expect(replayBtns.length).toBe(1);
+
+    for (const btn of Array.from(replayBtns)) {
+      expect(btn.classList.contains("is-audio-playing")).toBe(true);
+      expect(btn.classList.contains("is-tts-playing")).toBe(true);
+      const wave = btn.querySelector(".learnkit-sound-wave");
+      expect(wave).not.toBeNull();
+      const bars = btn.querySelectorAll(".learnkit-sound-bar");
+      expect(bars.length).toBe(3);
+    }
+
+    stopActiveVaultAudio(true);
+    for (const btn of Array.from(replayBtns)) {
+      expect(btn.classList.contains("is-audio-playing")).toBe(false);
+    }
+  });
 });
