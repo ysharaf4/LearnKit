@@ -115,9 +115,6 @@ describe("Reviewer Card Reveal", () => {
   });
 
   it("renders animated waves on replay button when card is revealed while audio is playing", async () => {
-    window.HTMLMediaElement.prototype.play = vi.fn().mockImplementation(() => Promise.resolve());
-    window.HTMLMediaElement.prototype.pause = vi.fn();
-
     const { playVaultAudio, stopActiveVaultAudio } = await import(
       "../src/platform/integrations/audio/audio-player"
     );
@@ -196,5 +193,52 @@ describe("Reviewer Card Reveal", () => {
     for (const btn of Array.from(replayBtns)) {
       expect(btn.classList.contains("is-audio-playing")).toBe(false);
     }
+  });
+
+  it("renders one speaker icon for reversed cards on reveal", () => {
+    const container = document.createElement("div");
+    const reversedCard: CardRecord = {
+      ...dummyCard,
+      type: "reversed",
+      audioRef: "audio/paris.mp3",
+    };
+
+    renderSessionMode({
+      container,
+      session: {
+        scope: { type: "vault", key: "all" },
+        queue: [reversedCard],
+        index: 0,
+        graded: {},
+        interrupted: false,
+      },
+      showAnswer: true,
+      setShowAnswer: vi.fn(),
+      currentCard: () => reversedCard,
+      backToDecks: vi.fn(),
+      nextCard: vi.fn(),
+      gradeCurrentRating: vi.fn(),
+      answerMcq: vi.fn(),
+      answerOq: vi.fn(),
+      showInfo: false,
+      clearTimer: vi.fn(),
+      clearCountdown: vi.fn(),
+      getNextDueInScope: () => null,
+      startCountdown: vi.fn(),
+      getClozeRenderOptions: () => ({ mode: "standard" }),
+      renderClozeFront: vi.fn(),
+      renderMarkdownInto: vi.fn(async (el, md) => {
+        el.textContent = md;
+      }),
+      randomizeMcqOptions: false,
+      randomizeOqOrder: false,
+      rerender: vi.fn(),
+      skipCurrentCard: vi.fn(),
+      ttsEnabled: true,
+      ttsReplayFront: vi.fn(),
+    });
+
+    const replayBtns = container.querySelectorAll<HTMLElement>(".learnkit-tts-replay-btn");
+    expect(replayBtns.length).toBe(1);
   });
 });

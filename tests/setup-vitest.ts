@@ -31,6 +31,12 @@ if (typeof document !== "undefined") {
     writable: true,
     configurable: true,
   });
+
+  // Stub HTMLMediaElement audio playback in jsdom
+  if (typeof window.HTMLMediaElement !== "undefined") {
+    window.HTMLMediaElement.prototype.play = vi.fn().mockImplementation(() => Promise.resolve());
+    window.HTMLMediaElement.prototype.pause = vi.fn();
+  }
 }
 
 // Node-based Vitest runs cannot import raw .wasm modules directly.

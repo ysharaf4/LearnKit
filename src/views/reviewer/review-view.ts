@@ -52,7 +52,6 @@ import {
   playVaultAudio,
   stopActiveVaultAudio,
   markAudioButtonActive,
-  clearActiveAudioButton,
   isVaultAudioPlaying,
 } from "../../platform/integrations/audio/audio-player";
 import { openCardAnchorInNote } from "../../platform/core/open-card-anchor";

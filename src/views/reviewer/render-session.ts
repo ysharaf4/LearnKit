@@ -1481,7 +1481,7 @@ export function renderSessionMode(args: Args) {
     const isOldReversed = card.type === "reversed";
     const frontContent = (isBackDirection || isOldReversed) ? (card.a || "") : (card.q || "");
     const backContent = (isBackDirection || isOldReversed) ? (card.q || "") : (card.a || "");
-    const replayFront = (card.type === "basic" || card.type === "combo-child") ? args.ttsReplayFront : undefined;
+    const replayFront = (card.type === "basic" || card.type === "reversed" || card.type === "reversed-child" || card.type === "combo-child") ? args.ttsReplayFront : undefined;
 
     section.appendChild(labelRow(t(args.interfaceLanguage, "ui.common.question", "Question"), replayFront));
     section.appendChild(renderMdBlock("learnkit-q", convertInlineDisplayMath(frontContent)));

@@ -5,14 +5,14 @@
  * visual UI bindings (3-bar animated sound wave and hover stop icon).
  */
 
-import type { App, TFile } from "obsidian";
+import { type App, TFile } from "obsidian";
+import { t } from "../../translations/translator";
 
 let _activeAudioElement: HTMLAudioElement | null = null;
 let _activeAudioBtn: HTMLElement | null = null;
 const _activeAudioBtns = new Set<HTMLElement>();
 let _activeAudioCleanup: (() => void) | null = null;
 let _isAudioPlaying = false;
-let _activeAudioRef: string | null = null;
 
 /**
  * Resolve an audio file reference (wikilink or path) to a TFile in the vault.
@@ -22,9 +22,9 @@ export function resolveVaultAudioFile(app: App, ref: string, sourceNotePath?: st
   const cleanRef = ref.replace(/^!\[\[/, "").replace(/\]\]$/, "").trim();
   if (!cleanRef) return null;
 
-  let file = app.vault.getAbstractFileByPath(cleanRef);
-  if (file && "extension" in file) {
-    return file as TFile;
+  const file = app.vault.getAbstractFileByPath(cleanRef);
+  if (file instanceof TFile) {
+    return file;
   }
 
   if (app.metadataCache) {
@@ -40,7 +40,6 @@ export function resolveVaultAudioFile(app: App, ref: string, sourceNotePath?: st
  */
 export function stopActiveVaultAudio(clearButton = true): void {
   _isAudioPlaying = false;
-  _activeAudioRef = null;
 
   if (_activeAudioCleanup) {
     _activeAudioCleanup();
@@ -64,6 +63,11 @@ export function stopActiveVaultAudio(clearButton = true): void {
 
 /**
  * Play an attached vault audio file.
+ * @param app Obsidian App instance
+ * @param ref Audio reference path or wikilink
+ * @param sourceNotePath Optional source note path for relative link resolution
+ * @param onEnd Optional completion callback
+ * @param targetBtn Optional button element to mark active immediately
  */
 export function playVaultAudio(
   app: App,
@@ -81,7 +85,6 @@ export function playVaultAudio(
   }
 
   _isAudioPlaying = true;
-  _activeAudioRef = ref;
 
   const activateMatchingButtons = () => {
     if (typeof document === "undefined") return;
@@ -105,7 +108,6 @@ export function playVaultAudio(
 
     const cleanup = () => {
       _isAudioPlaying = false;
-      _activeAudioRef = null;
       if (_activeAudioCleanup) {
         _activeAudioCleanup();
         _activeAudioCleanup = null;
@@ -140,7 +142,6 @@ export function playVaultAudio(
     return audio;
   } catch {
     _isAudioPlaying = false;
-    _activeAudioRef = null;
     clearActiveAudioButton();
     return null;
   }
@@ -163,23 +164,86 @@ export function markAudioButtonActive(btn: HTMLElement): void {
   _activeAudioBtns.add(btn);
   _activeAudioBtn = btn;
   btn.classList.add("is-tts-playing", "is-audio-playing");
-  btn.setAttribute("aria-label", "Stop playing");
+
+  if (!btn.hasAttribute("data-original-label")) {
+    const currentLabel = btn.getAttribute("aria-label");
+    if (currentLabel) {
+      btn.setAttribute("data-original-label", currentLabel);
+    }
+  }
+  btn.setAttribute("aria-label", t(undefined, "ui.common.stopPlaying", "Stop playing"));
 }
 
 /**
  * Clear the active playing button state.
  */
 export function clearActiveAudioButton(): void {
+  const restoreBtnLabel = (b: HTMLElement) => {
+    b.classList.remove("is-tts-playing", "is-audio-playing");
+    const orig = b.getAttribute("data-original-label");
+    if (orig) {
+      b.setAttribute("aria-label", orig);
+      b.removeAttribute("data-original-label");
+    } else {
+      b.setAttribute("aria-label", t(undefined, "ui.reading.flashcard.readAloud", "Read aloud"));
+    }
+  };
+
   for (const btn of _activeAudioBtns) {
-    btn.classList.remove("is-tts-playing", "is-audio-playing");
-    btn.setAttribute("aria-label", "Read aloud");
+    restoreBtnLabel(btn);
   }
   _activeAudioBtns.clear();
   if (_activeAudioBtn) {
-    _activeAudioBtn.classList.remove("is-tts-playing", "is-audio-playing");
-    _activeAudioBtn.setAttribute("aria-label", "Read aloud");
+    restoreBtnLabel(_activeAudioBtn);
     _activeAudioBtn = null;
   }
+}
+
+function createVolume2Svg(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "15");
+  svg.setAttribute("height", "15");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("class", "svg-icon lucide-volume-2");
+
+  const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+  poly.setAttribute("points", "11 5 6 9 2 9 2 15 6 15 11 19 11 5");
+  svg.appendChild(poly);
+
+  const path1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path1.setAttribute("d", "M15.54 8.46a5 5 0 0 1 0 7.07");
+  svg.appendChild(path1);
+
+  const path2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path2.setAttribute("d", "M19.07 4.93a10 10 0 0 1 0 14.14");
+  svg.appendChild(path2);
+
+  return svg;
+}
+
+function createStopSvg(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "currentColor");
+  svg.setAttribute("stroke", "none");
+  svg.setAttribute("class", "svg-icon lucide-square");
+
+  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  rect.setAttribute("width", "14");
+  rect.setAttribute("height", "14");
+  rect.setAttribute("x", "5");
+  rect.setAttribute("y", "5");
+  rect.setAttribute("rx", "2");
+  svg.appendChild(rect);
+
+  return svg;
 }
 
 /**
@@ -203,7 +267,7 @@ export function bindAudioPlayingState(btn: HTMLElement): void {
   }
 
   if (!idleWrap.querySelector("svg")) {
-    idleWrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-volume-2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>`;
+    idleWrap.appendChild(createVolume2Svg());
   }
 
   const playingWrap = document.createElement("span");
@@ -220,7 +284,7 @@ export function bindAudioPlayingState(btn: HTMLElement): void {
 
   const stopIcon = document.createElement("span");
   stopIcon.className = "tts-icon-stop";
-  stopIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+  stopIcon.appendChild(createStopSvg());
   playingWrap.appendChild(stopIcon);
 
   btn.appendChild(playingWrap);

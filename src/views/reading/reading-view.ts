@@ -3343,6 +3343,9 @@ function setupFlashcardFlip(el: HTMLElement) {
   window.setTimeout(recalcHeight, 120);
 }
 
+let _activeHoverCardEl: HTMLElement | null = null;
+let _readingRKeyBound = false;
+
 function enhanceCardElement(
   el: HTMLElement,
   card: LearnKitCard,
@@ -3643,11 +3646,11 @@ function enhanceCardElement(
   }
 
   el.addEventListener("mouseenter", () => {
-    (window as unknown as { __learnkitHoverCard?: HTMLElement }).__learnkitHoverCard = el;
+    _activeHoverCardEl = el;
   });
   el.addEventListener("mouseleave", () => {
-    if ((window as unknown as { __learnkitHoverCard?: HTMLElement }).__learnkitHoverCard === el) {
-      delete (window as unknown as { __learnkitHoverCard?: HTMLElement }).__learnkitHoverCard;
+    if (_activeHoverCardEl === el) {
+      _activeHoverCardEl = null;
     }
   });
 
@@ -3755,8 +3758,8 @@ export function renderReadingViewPreviewCard(el: HTMLElement, card: LearnKitCard
   });
 }
 
-if (typeof window !== "undefined" && !(window as unknown as { __learnkitReadingRKeyBound?: boolean }).__learnkitReadingRKeyBound) {
-  (window as unknown as { __learnkitReadingRKeyBound?: boolean }).__learnkitReadingRKeyBound = true;
+if (typeof window !== "undefined" && !_readingRKeyBound) {
+  _readingRKeyBound = true;
   window.addEventListener("keydown", (ev: KeyboardEvent) => {
     if (ev.key.toLowerCase() !== "r") return;
     const target = ev.target as HTMLElement | null;
@@ -3764,8 +3767,7 @@ if (typeof window !== "undefined" && !(window as unknown as { __learnkitReadingR
     if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
     if (target?.closest(".learnkit-session-container, .modal-container")) return;
 
-    const hoverCard = (window as unknown as { __learnkitHoverCard?: HTMLElement }).__learnkitHoverCard;
-    const cardEl = hoverCard || (document.activeElement?.closest(".learnkit-pretty-card.learnkit-macro-flashcards") as HTMLElement | null);
+    const cardEl = _activeHoverCardEl || (document.activeElement?.closest(".learnkit-pretty-card.learnkit-macro-flashcards") as HTMLElement | null);
     if (!cardEl) return;
 
     const activeSpeakBtn = cardEl.querySelector<HTMLElement>(".learnkit-flashcard-question:not([hidden]) .learnkit-flashcard-speak-btn")
