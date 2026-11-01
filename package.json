@@ -31,7 +31,9 @@
     "i18n:literals:baseline": "node tooling/check-i18n-literals.mjs --update-baseline",
     "lint": "eslint -c tooling/eslint.config.mjs src",
     "lint:fix": "eslint -c tooling/eslint.config.mjs src --fix",
-    "css:hex:expand": "node tooling/expand-css-hex.mjs ./src/platform/styles ./src/styles.tailwind.css ./dist/styles.css"
+    "css:hex:expand": "node tooling/expand-css-hex.mjs ./src/platform/styles ./src/styles.tailwind.css ./dist/styles.css",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@astrojs/starlight": "^0.38.5",
@@ -48,7 +50,9 @@
     "eslint": "^9.39.3",
     "eslint-plugin-obsidianmd": "^0.1.9",
     "globals": "^17.4.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.0.2",
+    "lint-staged": "^17.6.0",
     "obsidian": "1.12.3",
     "postcss": "^8.5.8",
     "postcss-cli": "^11.0.1",

@@ -113,6 +113,31 @@ After review approval the maintainer:
 - Use follow-up PRs for terminology refinements.
 - For minor corrections to an existing locale, open a focused PR with just the changed keys.
 
+## Code conventions
+
+When contributing TypeScript or styling code, adhere to these architectural and security requirements:
+
+- **DOM Construction**: Never write to `innerHTML` or `outerHTML`. Obsidian community plugin guidelines strictly prohibit direct HTML string injection. Construct SVG elements using `document.createElementNS("http://www.w3.org/2000/svg", ...)` and HTML elements using standard DOM APIs (`createEl`, `appendChild`).
+- **Safe Type Narrowing**: Do not cast vault items directly with `file as TFile`. Always perform runtime checks: `if (file instanceof TFile)`.
+- **Module State**: Do not attach temporary state, listeners, or flags to `(window as any)` or globals. Keep state in module-scoped variables or class instances.
+- **Localization**: Wrap every user-facing string using `t(locale, "token.key", "English fallback")`. If a new token is added to `en-base.json`, add the translation to `zh-cn.json` and ensure `npm run translations:check` passes with zero missing keys.
+- **CSS & Design Tokens**: Never use `!important` in CSS stylesheets. Route theme and visual properties through LearnKit design tokens (such as `var(--lk-backdrop-blur)`).
+- **Terminology**: Consult [`GLOSSARY.md`](file:///Users/ysharaf/LearnKit/GLOSSARY.md) for domain concepts (e.g. _Study Session_, _Card_, _Scope_, _Rating_, _Bury_, _Suspend_).
+
+## Development & verification
+
+Verify your changes locally using these commands:
+
+```bash
+npm run typecheck                    # Check TypeScript types (tsc --noEmit)
+npm run translations:check          # Ensure locale completeness and parity
+npx vitest run tests/source-hygiene.test.ts  # Run source hygiene tests
+npm test                             # Run all tests
+npm run build                        # Verify production bundle build
+```
+
+Pre-commit hooks (managed by Husky and lint-staged) automatically enforce typechecks, translations, and source hygiene tests before every commit.
+
 ## Reporting translation issues
 
 Open an issue and include:

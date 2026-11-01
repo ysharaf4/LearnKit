@@ -1,0 +1,5 @@
+{
+  "src/**/*.{ts,tsx}": [
+    "eslint -c tooling/eslint.config.mjs --fix"
+  ]
+}
