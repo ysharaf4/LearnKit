@@ -64,5 +64,21 @@ _Avoid_: Child record, sub-card, generated card item
 A card whose source syntax is malformed or whose referenced asset (e.g., occlusion image) is missing, temporarily excluded from study queues while preserving its scheduling history.
 _Avoid_: Broken card, error card, suspended syntax item
 
+**Card Parsing**:
+The process of scanning Markdown note text, respecting code/math fence boundaries, recognizing header delimiters and shorthand notations, and extracting structured card field records.
+_Avoid_: Card extraction, note tokenization, markdown scanning
+
+**Card Serialization**:
+The deterministic transformation of a flashcard record into canonical pipe-delimited (or custom-delimited) Markdown text, ensuring proper delimiter escaping and anchor placement.
+_Avoid_: Card stringifying, markdown generation, pipe formatting
+
+**Shorthand Notation**:
+Compact single-line or multi-line flashcard syntax (e.g., `Question::Answer`, `Question:::Answer`, `cloze::body`, or SuperMemo blocks `?` / `??`) parsed into cards and expandable to canonical delimited formats.
+_Avoid_: Inline syntax, compact cards, quick prompts
+
+**Card Validation**:
+The domain verification pass that inspects parsed card fields for mandatory content and syntax integrity, attaching descriptive parsing error notices if malformed without throwing exceptions.
+_Avoid_: Card linting, syntax checking, card verification pass
+
 
 
