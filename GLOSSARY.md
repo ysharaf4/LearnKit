@@ -100,6 +100,15 @@ _Avoid_: Style manager, theme adapter, zoom controller
 The subsystem managing Obsidian side-dock ribbon icons, periodic reminder engine timers, and developer console command registration.
 _Avoid_: Ribbon service, reminder manager, icon handler
 
+**Assistant Conversation**:
+An ongoing multi-turn dialogue session between the student and the AI companion, associated with a note and preserving message turns, modes, and remote conversation identifiers.
+_Avoid_: Chat session, AI bot thread, companion state
 
+**Companion Workflow**:
+The orchestration process that executes intent classification, note context assembly, streaming prompt dispatch, proposal diff parsing, flashcard suggestion generation, or inline test evaluation.
+_Avoid_: AI pipeline, prompt coordinator, assistant service
 
+**Companion Stream Event**:
+A typed event emitted asynchronously during an AI companion workflow execution (such as token delta, intent determined, suggestions batch, edit proposal parsed, test ready, or completion status).
+_Avoid_: Chat chunk, stream packet, LLM message callback
 

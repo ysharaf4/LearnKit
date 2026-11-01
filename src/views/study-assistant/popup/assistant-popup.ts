@@ -26,6 +26,11 @@ import {
   type UserIntentClassification,
 } from "../../../platform/integrations/ai/study-assistant-generator";
 import { buildStudyAssistantNoteContext, extractStudyAssistantImageDescriptors } from "../../../platform/integrations/ai/study-assistant-note-context";
+import {
+  AssistantConversation,
+  type CompanionStreamEvent,
+  type NoteContextData,
+} from "../../../platform/integrations/ai/assistant-conversation";
 import { generateExamQuestions, gradeFullTest } from "../../../platform/integrations/ai/exam-generator-ai";
 import type { GeneratedExamQuestion, ExamGeneratorConfig } from "../../exam-generator/exam-generator-types";
 import { deleteStudyAssistantConversation } from "../../../platform/integrations/ai/study-assistant-provider";
@@ -269,9 +274,14 @@ export class LearnKitAssistantPopup {
 
   private _onChatLogSynced: ((e: Event) => void) | null = null;
   private _onEditProposalResolved: ((e: Event) => void) | null = null;
+  private _conversation: AssistantConversation;
 
   constructor(plugin: LearnKitPlugin) {
     this.plugin = plugin;
+    this._conversation = new AssistantConversation({
+      settings: this.plugin.settings.studyAssistant,
+      translator: (token, fallback, vars) => this._tx(token, fallback, vars),
+    });
     // Async hydrate from data.json, the only store for this preference.
     void this._hydratePopupSizeFromDataJson();
   }
@@ -390,6 +400,7 @@ export class LearnKitAssistantPopup {
   }
 
   refresh(): void {
+    this._conversation.updateSettings(this.plugin.settings.studyAssistant);
     if (!this.popupEl) return;
     this.render();
   }
@@ -1119,6 +1130,7 @@ export class LearnKitAssistantPopup {
     this._reviewDepthMenuAbort?.abort();
     this._reviewDepthMenuAbort = null;
 
+    this._conversation.abort();
     if (this._streamAbort) {
       this._streamAbort.abort();
       this._streamAbort = null;
@@ -1817,12 +1829,13 @@ export class LearnKitAssistantPopup {
   }
 
   private _isStopActionAvailable(mode: AssistantMode): boolean {
-    return this._activeStreamingMode === mode && !!this._streamAbort;
+    return this._activeStreamingMode === mode && (!!this._streamAbort || this._conversation.isStreaming);
   }
 
   private _requestStopActiveStream(mode: AssistantMode): void {
     if (!this._isStopActionAvailable(mode)) return;
     this._streamAbortRequestedByUser = true;
+    this._conversation.abort();
     this._streamAbort?.abort();
   }
 
@@ -3269,6 +3282,17 @@ export class LearnKitAssistantPopup {
       this._emitLinkedContextTruncationNotice();
       const conversationId = getRemoteConversationForMode(this.remoteConversationsByMode, "assistant")?.conversationId;
 
+      const noteContext: NoteContextData = {
+        path: file?.path || "",
+        title: file?.basename || file?.name || "",
+        noteContent: context.noteContent,
+        noteContentForAi: context.noteContentForAi,
+        imageRefs: context.imageRefs,
+        imageDataUrls: context.imageDataUrls,
+        attachedFileDataUrls: context.attachedFileDataUrls,
+        imageDescriptors: "imageDescriptors" in context ? context.imageDescriptors : [],
+      };
+
       // Streaming placeholder – deferred until the first token arrives so
       // the typing indicator stays visible and no empty bubble is shown.
       this._streamingReplyText = "";
@@ -3276,61 +3300,62 @@ export class LearnKitAssistantPopup {
       this._beginStreaming("assistant");
 
       askLatency.requestStartedAt = performance.now();
-      const result = await generateStudyAssistantChatReplyStreaming({
-        settings,
-        input: {
-          mode: "ask",
-          notePath: file?.path || "",
-          noteContent: context.noteContentForAi,
-          imageRefs: context.imageRefs,
-          imageDataUrls: context.imageDataUrls,
-          attachedFileDataUrls: context.attachedFileDataUrls,
-          includeImages: context.includeImages,
-          userMessage,
-          customInstructions: settings.prompts.assistant,
-          conversationId,
-          conversationHistory: this.chatMessages,
-        },
-        onChunk: (token) => {
-          if (askLatency.firstTokenAt == null) askLatency.firstTokenAt = performance.now();
-          this._streamingReplyText += token;
-          streamingMsg.text = this._streamingReplyText;
-          if (!placeholderPushed) {
-            this.chatMessages.push(streamingMsg);
-            placeholderPushed = true;
-            this._isStreaming = true;
-            this.render();
-            if (askLatency.firstRenderAt == null) askLatency.firstRenderAt = performance.now();
-          } else {
-            this._scheduleStreamRender();
-          }
-        },
-        signal: this._streamAbort.signal,
-      });
+      for await (const event of this._conversation.sendMessage({
+        userMessage,
+        noteContext,
+        recentMessages: this.chatMessages,
+        attachedFileDataUrls: context.attachedFileDataUrls,
+        conversationId,
+        forceIntent: "ask",
+      })) {
+        switch (event.type) {
+          case "token":
+            if (askLatency.firstTokenAt == null) askLatency.firstTokenAt = performance.now();
+            this._streamingReplyText = event.accumulated;
+            streamingMsg.text = event.accumulated;
+            if (!placeholderPushed) {
+              this.chatMessages.push(streamingMsg);
+              placeholderPushed = true;
+              this._isStreaming = true;
+              this.render();
+              if (askLatency.firstRenderAt == null) askLatency.firstRenderAt = performance.now();
+            } else {
+              this._scheduleStreamRender();
+            }
+            break;
 
-      this._isStreaming = false;
-      this._streamAbort = null;
+          case "done":
+            this._isStreaming = false;
+            this._streamAbort = null;
 
-      const reply = this._appendFlashcardDisclaimerIfNeeded(String(result.reply || "").trim(), draft) || this._tx(
-        "ui.studyAssistant.chat.emptyReply",
-        "No response returned.",
-      );
-      if (!placeholderPushed) this.chatMessages.push(streamingMsg);
-      streamingMsg.text = reply;
-      setRemoteConversationForMode(this.remoteConversationsByMode, "assistant", result.conversationId, this.plugin.settings.studyAssistant);
-      askLatency.completedAt = performance.now();
-      askLatency.outcome = "success";
+            const reply = this._appendFlashcardDisclaimerIfNeeded(String(event.text || "").trim(), draft) || this._tx(
+              "ui.studyAssistant.chat.emptyReply",
+              "No response returned.",
+            );
+            if (!placeholderPushed) this.chatMessages.push(streamingMsg);
+            streamingMsg.text = reply;
+            if (event.conversationId) {
+              setRemoteConversationForMode(this.remoteConversationsByMode, "assistant", event.conversationId, this.plugin.settings.studyAssistant);
+            }
+            askLatency.completedAt = performance.now();
+            askLatency.outcome = "success";
 
-      // File-switch guard: route response to originating note if user switched away
-      if (this.activeFile?.path !== originPath && originFile) {
-        this._logAskLatency(askLatency);
-        await this._appendResponseToPersistedChat(originFile, "messages", { role: "assistant", text: reply });
-        return;
+            // File-switch guard: route response to originating note if user switched away
+            if (this.activeFile?.path !== originPath && originFile) {
+              this._logAskLatency(askLatency);
+              await this._appendResponseToPersistedChat(originFile, "messages", { role: "assistant", text: reply });
+              return;
+            }
+
+            this._notifyIncomingAssistantReply("assistant");
+            this._speakReply(reply, this.chatMessages.length - 1);
+            this._logAskLatency(askLatency);
+            break;
+
+          case "error":
+            throw event.rawError ?? new Error(event.error);
+        }
       }
-
-      this._notifyIncomingAssistantReply("assistant");
-      this._speakReply(reply, this.chatMessages.length - 1);
-      this._logAskLatency(askLatency);
     } catch (e) {
       this._isStreaming = false;
       this._streamAbort = null;
@@ -3399,109 +3424,100 @@ export class LearnKitAssistantPopup {
 
     try {
       const noteContent = await this.readActiveMarkdown(file);
-      const settings = this.plugin.settings.studyAssistant;
       const conversationId = getRemoteConversationForMode(this.remoteConversationsByMode, "assistant")?.conversationId;
-      let streamingRawReplyText = "";
       this._streamingReplyText = "";
       this._streamAbort = new AbortController();
       this._beginStreaming("assistant");
 
-      const result = await generateStudyAssistantChatReplyStreaming({
-        settings,
-        input: {
-          mode: "edit",
-          notePath: file.path,
-          noteContent,
-          imageRefs: [],
-          imageDataUrls: [],
-          includeImages: false,
-          userMessage: draft,
-          customInstructions: settings.prompts.assistant,
-          conversationId,
-          conversationHistory: this.chatMessages,
-        },
-        onChunk: (token) => {
-          streamingRawReplyText += token;
-          const previewText = extractVisibleEditResponseText(streamingRawReplyText);
-          this._streamingReplyText = previewText;
-          streamingMsg.text = previewText;
+      const noteContext: NoteContextData = {
+        path: file.path,
+        title: file.basename || file.name,
+        noteContent,
+        noteContentForAi: noteContent,
+      };
 
-          if (!previewText.trim()) return;
+      for await (const event of this._conversation.sendMessage({
+        userMessage: draft,
+        noteContext,
+        recentMessages: this.chatMessages,
+        conversationId,
+        forceIntent: "edit",
+      })) {
+        switch (event.type) {
+          case "token":
+            const previewText = extractVisibleEditResponseText(event.accumulated);
+            this._streamingReplyText = previewText;
+            streamingMsg.text = previewText;
 
-          if (!placeholderPushed) {
-            this.chatMessages.push(streamingMsg);
-            placeholderPushed = true;
-            this._isStreaming = true;
-            this.render();
-          } else {
-            this._scheduleStreamRender();
-          }
-        },
-        signal: this._streamAbort.signal,
-      });
+            if (!previewText.trim()) break;
 
-      this._isStreaming = false;
-      this._streamAbort = null;
-      this._streamAbortRequestedByUser = false;
+            if (!placeholderPushed) {
+              this.chatMessages.push(streamingMsg);
+              placeholderPushed = true;
+              this._isStreaming = true;
+              this.render();
+            } else {
+              this._scheduleStreamRender();
+            }
+            break;
 
-      setRemoteConversationForMode(this.remoteConversationsByMode, "assistant", result.conversationId, this.plugin.settings.studyAssistant);
-      const proposal = parseEditProposal(result.reply);
-      const streamedSummary = extractVisibleEditResponseText(result.reply).trim();
-      const fallbackText = proposal?.summary || streamedSummary || this._tx("ui.studyAssistant.edit.noChanges", "No changes could be made to the note.");
-      const invalidProposalText = this._tx(
-        "ui.studyAssistant.edit.invalidProposal",
-        "I couldn't prepare an editable note update this time, so nothing was written to the note. Please try again with a direct instruction like 'rewrite this section and add it to my note'.",
-      );
+          case "edit-proposal":
+            this._dispatchEditDecorationsToEditor(event.proposal.edits, noteContent);
+            break;
 
-      // File-switch guard: if user moved to another note, persist reply to originating file
-      if (this.activeFile?.path !== originPath) {
-        await this._appendResponseToPersistedChat(file, "messages", { role: "assistant", text: proposal ? fallbackText : invalidProposalText });
-        return;
-      }
+          case "done":
+            this._isStreaming = false;
+            this._streamAbort = null;
+            this._streamAbortRequestedByUser = false;
 
-      if (!proposal) {
-        if (!placeholderPushed) {
-          this.chatMessages.push({ role: "assistant", text: invalidProposalText });
-        } else {
-          streamingMsg.text = invalidProposalText;
-        }
-      } else if (!proposal.edits.length) {
-        if (!placeholderPushed) {
-          this.chatMessages.push({ role: "assistant", text: fallbackText });
-        } else {
-          streamingMsg.text = fallbackText;
-        }
-      } else {
-        const allowFm = mentionsFrontmatter(draft);
-        const validation = validateEditProposal(proposal.edits, noteContent, allowFm);
+            if (event.conversationId) {
+              setRemoteConversationForMode(this.remoteConversationsByMode, "assistant", event.conversationId, this.plugin.settings.studyAssistant);
+            }
 
-        if (!validation.validEdits.length) {
-          const reason = validation.rejectionReasons[0] || "All proposed edits could not be applied.";
-          const rejectionText = `${proposal.summary}\n\n⚠️ ${reason}`;
-          if (!placeholderPushed) {
-            this.chatMessages.push({ role: "assistant", text: rejectionText });
-          } else {
-            streamingMsg.text = rejectionText;
-          }
-        } else {
-          const editProposal: ChatMessageEditProposal = {
-            summary: proposal.summary,
-            edits: validation.validEdits.map(e => ({ ...e, status: "pending" as const })),
-            status: "pending",
-          };
-          if (!placeholderPushed) {
-            this.chatMessages.push({ role: "assistant", text: proposal.summary, editProposal });
-          } else {
-            streamingMsg.text = proposal.summary;
-            streamingMsg.editProposal = editProposal;
-          }
+            const fallbackText = event.editProposal?.summary || event.text || this._tx("ui.studyAssistant.edit.noChanges", "No changes could be made to the note.");
+            const invalidProposalText = this._tx(
+              "ui.studyAssistant.edit.invalidProposal",
+              "I couldn't prepare an editable note update this time, so nothing was written to the note. Please try again with a direct instruction like 'rewrite this section and add it to my note'.",
+            );
 
-          // Dispatch to CM6 edit decorations
-          this._dispatchEditDecorationsToEditor(validation.validEdits, noteContent);
+            // File-switch guard: if user moved to another note, persist reply to originating file
+            if (this.activeFile?.path !== originPath) {
+              await this._appendResponseToPersistedChat(file, "messages", { role: "assistant", text: event.editProposal ? fallbackText : invalidProposalText });
+              return;
+            }
+
+            if (!event.editProposal) {
+              if (!placeholderPushed) {
+                this.chatMessages.push({ role: "assistant", text: invalidProposalText });
+              } else {
+                streamingMsg.text = invalidProposalText;
+              }
+            } else if (!event.editProposal.edits.length) {
+              if (!placeholderPushed) {
+                this.chatMessages.push({ role: "assistant", text: fallbackText });
+              } else {
+                streamingMsg.text = fallbackText;
+              }
+            } else {
+              const fullProposal: ChatMessageEditProposal = {
+                summary: event.editProposal.summary,
+                edits: event.editProposal.edits.map((e) => ({ ...e, status: "pending" as const })),
+                status: "pending",
+              };
+              if (placeholderPushed) {
+                streamingMsg.text = event.editProposal.summary;
+                streamingMsg.editProposal = fullProposal;
+              } else {
+                this.chatMessages.push({ role: "assistant", text: event.editProposal.summary, editProposal: fullProposal });
+              }
+            }
+            this._notifyIncomingAssistantReply("assistant");
+            break;
+
+          case "error":
+            throw event.rawError ?? new Error(event.error);
         }
       }
-
-      this._notifyIncomingAssistantReply("assistant");
     } catch (e) {
       this._isStreaming = false;
       this._streamAbort = null;
@@ -3843,64 +3859,40 @@ export class LearnKitAssistantPopup {
       );
       const allAttachmentUrls = this._dedupeDataUrls([...threadTestAttachedUrls, ...noteEmbedUrls, ...linkedAttachmentUrls]);
 
-      const parsed = parseTestConfigFromRequest(userMessage);
-      const config: import("../../exam-generator/exam-generator-types").ExamGeneratorConfig = {
-        difficulty: parsed.difficulty ?? "medium",
-        questionMode: parsed.questionMode ?? "mixed",
-        questionCount: parsed.questionCount ?? 5,
-        testName: "",
-        appliedScenarios: parsed.appliedScenarios ?? false,
-        timed: false,
-        durationMinutes: 15,
-        customInstructions: String(settings.prompts.tests || "").trim(),
-        includeFlashcards: false,
-        sourceMode: "selected",
-        folderPath: "",
-        includeSubfolders: false,
-        maxFolderNotes: 20,
-      };
-
-      const questions = await generateExamQuestions({
-        settings,
-        notes: [{ path: file.path, title: file.basename || file.name, content: noteContentForAi }],
-        config,
+      const noteContext: NoteContextData = {
+        path: file.path,
+        title: file.basename || file.name,
+        noteContent,
+        noteContentForAi,
         attachedFileDataUrls: allAttachmentUrls,
-      });
-
-      // File-switch guard: if user moved to another note, persist reply to originating file
-      const fileChanged = this.activeFile?.path !== originPath;
-
-      if (!questions.length) {
-        const noQuestionsMsg: ChatMessage = {
-          role: "assistant",
-          text: this._tx(
-            "ui.studyAssistant.test.noQuestions",
-            "I couldn't generate questions from this note. Try a note with more educational content.",
-          ),
-        };
-        if (fileChanged) {
-          await this._appendResponseToPersistedChat(file, "messages", noQuestionsMsg);
-        } else {
-          this.chatMessages.push(noQuestionsMsg);
-          this._scheduleSave();
-          this.render();
-        }
-        return;
-      }
-
-      this._pendingTestQuestions = questions;
-      this._pendingTestDifficulty = config.difficulty;
-
-      const testMarkdown = this._formatTestQuestionsAsMarkdown(questions, config);
-      const testMsg: ChatMessage = {
-        role: "assistant",
-        text: testMarkdown,
       };
-      if (fileChanged) {
-        await this._appendResponseToPersistedChat(file, "messages", testMsg);
-      } else {
-        this.chatMessages.push(testMsg);
-        this._notifyIncomingAssistantReply("assistant");
+
+      for await (const event of this._conversation.generateInlineTest({
+        userMessage,
+        noteContext,
+        attachedFileDataUrls: allAttachmentUrls,
+      })) {
+        switch (event.type) {
+          case "test-questions":
+            this._pendingTestQuestions = event.questions;
+            this._pendingTestDifficulty = event.config.difficulty;
+            break;
+          case "done":
+            const fileChanged = this.activeFile?.path !== originPath;
+            const testMsg: ChatMessage = {
+              role: "assistant",
+              text: event.text,
+            };
+            if (fileChanged) {
+              await this._appendResponseToPersistedChat(file, "messages", testMsg);
+            } else {
+              this.chatMessages.push(testMsg);
+              this._notifyIncomingAssistantReply("assistant");
+            }
+            break;
+          case "error":
+            throw event.rawError ?? new Error(event.error);
+        }
       }
     } catch (e) {
       const errMsg = formatAssistantError(e, (token, fallback, vars) => this._tx(token, fallback, vars));
@@ -3974,17 +3966,26 @@ export class LearnKitAssistantPopup {
     this.render();
 
     try {
-      const settings = this.plugin.settings.studyAssistant;
-      const gradeResult = await gradeFullTest({ settings, questions, userAnswerText, difficulty });
-      const resultsMarkdown = this._formatTestResultsAsMarkdown(gradeResult, questions);
-      const fileChanged = this.activeFile?.path !== originPath;
-      const resultsMsg: ChatMessage = { role: "assistant", text: resultsMarkdown };
-      if (fileChanged) {
-        const file = this.getActiveMarkdownFile();
-        if (file) await this._appendResponseToPersistedChat(file, "messages", resultsMsg);
-      } else {
-        this.chatMessages.push(resultsMsg);
-        this._notifyIncomingAssistantReply("assistant");
+      this._conversation.setPendingTest(questions, difficulty);
+
+      for await (const event of this._conversation.gradePendingTest(userAnswerText)) {
+        switch (event.type) {
+          case "test-graded":
+            break;
+          case "done":
+            const fileChanged = this.activeFile?.path !== originPath;
+            const resultsMsg: ChatMessage = { role: "assistant", text: event.text };
+            if (fileChanged) {
+              const file = this.getActiveMarkdownFile();
+              if (file) await this._appendResponseToPersistedChat(file, "messages", resultsMsg);
+            } else {
+              this.chatMessages.push(resultsMsg);
+              this._notifyIncomingAssistantReply("assistant");
+            }
+            break;
+          case "error":
+            throw event.rawError ?? new Error(event.error);
+        }
       }
     } catch (e) {
       const errMsg = formatAssistantError(e, (token, fallback, vars) => this._tx(token, fallback, vars));
@@ -4061,58 +4062,66 @@ export class LearnKitAssistantPopup {
       this._streamAbort = new AbortController();
       this._beginStreaming("review");
 
-      const result = await generateStudyAssistantChatReplyStreaming({
-        settings,
-        input: {
-          mode: "review",
-          notePath: file.path,
-          noteContent: noteContentForAi,
-          imageRefs,
-          imageDataUrls,
-          attachedFileDataUrls: allAttachmentUrls,
-          includeImages,
-          userMessage: draft,
-          customInstructions: [
-            String(settings.prompts.assistant || "").trim(),
-            this._assistantReplyLanguageInstruction(),
-          ].filter(Boolean).join("\n\n"),
-          reviewDepth: depthOverride ?? this.reviewDepth,
-          conversationId,
-          conversationHistory: this.reviewMessages,
-        },
-        onChunk: (token) => {
-          this._streamingReplyText += token;
-          streamingMsg.text = this._streamingReplyText;
-          if (!placeholderPushed) {
-            this.reviewMessages.push(streamingMsg);
-            placeholderPushed = true;
-            this._isStreaming = true;
-            this.render();
-          } else {
-            this._scheduleStreamRender();
-          }
-        },
-        signal: this._streamAbort.signal,
-      });
+      const noteContext: NoteContextData = {
+        path: file.path,
+        title: file.basename || file.name,
+        noteContent,
+        noteContentForAi,
+        imageRefs,
+        imageDataUrls,
+        attachedFileDataUrls: allAttachmentUrls,
+      };
 
-      this._isStreaming = false;
-      this._streamAbort = null;
+      for await (const event of this._conversation.sendMessage({
+        userMessage: draft,
+        forceIntent: "review",
+        reviewDepth: depthOverride ?? this.reviewDepth,
+        noteContext,
+        recentMessages: this.reviewMessages,
+        attachedFileDataUrls: allAttachmentUrls,
+        conversationId,
+      })) {
+        switch (event.type) {
+          case "token":
+            this._streamingReplyText = event.accumulated;
+            streamingMsg.text = event.accumulated;
+            if (!placeholderPushed) {
+              this.reviewMessages.push(streamingMsg);
+              placeholderPushed = true;
+              this._isStreaming = true;
+              this.render();
+            } else {
+              this._scheduleStreamRender();
+            }
+            break;
 
-      const reply = String(result.reply || "").trim() || this._tx(
-        "ui.studyAssistant.chat.emptyReply",
-        "No response returned.",
-      );
-      if (!placeholderPushed) this.reviewMessages.push(streamingMsg);
-      streamingMsg.text = reply;
-      setRemoteConversationForMode(this.remoteConversationsByMode, "review", result.conversationId, this.plugin.settings.studyAssistant);
+          case "done":
+            this._isStreaming = false;
+            this._streamAbort = null;
 
-      // File-switch guard: route response to originating note if user switched away
-      if (this.activeFile?.path !== originPath) {
-        await this._appendResponseToPersistedChat(file, "reviewMessages", { role: "assistant", text: reply });
-        return;
+            const reply = String(event.text || "").trim() || this._tx(
+              "ui.studyAssistant.chat.emptyReply",
+              "No response returned.",
+            );
+            if (!placeholderPushed) this.reviewMessages.push(streamingMsg);
+            streamingMsg.text = reply;
+            if (event.conversationId) {
+              setRemoteConversationForMode(this.remoteConversationsByMode, "review", event.conversationId, this.plugin.settings.studyAssistant);
+            }
+
+            // File-switch guard: route response to originating note if user switched away
+            if (this.activeFile?.path !== originPath) {
+              await this._appendResponseToPersistedChat(file, "reviewMessages", { role: "assistant", text: reply });
+              return;
+            }
+
+            this._notifyIncomingAssistantReply("review");
+            break;
+
+          case "error":
+            throw event.rawError ?? new Error(event.error);
+        }
       }
-
-      this._notifyIncomingAssistantReply("review");
     } catch (e) {
       this._isStreaming = false;
       this._streamAbort = null;
@@ -4477,80 +4486,46 @@ export class LearnKitAssistantPopup {
 
       this._streamAbort = new AbortController();
       this._beginStreaming("generate");
-      let result = await generateStudyAssistantSuggestionsStreaming({
-        settings,
-        input: {
-          ...generationInputBase,
-          customInstructions,
-          conversationId,
-        },
-        signal: this._streamAbort.signal,
-        onSuggestion: (suggestion) => {
-          collectValidSuggestions([suggestion]);
-        },
-      });
-      this._streamAbort = null;
-      this._streamAbortRequestedByUser = false;
-      setRemoteConversationForMode(this.remoteConversationsByMode, "generate", result.conversationId, this.plugin.settings.studyAssistant);
 
-      let generatedSuggestionsRaw = Array.isArray(result.suggestions) ? result.suggestions : [];
-      let { validSuggestions: generatedSuggestions, rejectedReasons } = this.validateSuggestionsForDisplay(file, generatedSuggestionsRaw);
-      collectValidSuggestions(generatedSuggestions);
+      const noteContext: NoteContextData = {
+        path: file.path,
+        title: file.basename || file.name,
+        noteContent,
+        noteContentForAi: noteContent,
+        imageRefs,
+        imageDescriptors,
+        imageDataUrls,
+        attachedFileDataUrls: genAttachedUrls,
+      };
 
-      const firstAttemptTotal = generatedSuggestionsRaw.length;
-      const firstAttemptRejected = rejectedReasons.length;
-      const firstAttemptInvalidRatio = firstAttemptTotal > 0 ? firstAttemptRejected / firstAttemptTotal : 0;
-      const shouldRetryForFormat = streamedSuggestions.length < requestedSuggestionCount
-        && (firstAttemptTotal === 0 || (firstAttemptTotal > 0 && firstAttemptInvalidRatio > invalidRetryThreshold));
+      let rejectedReasons: string[] = [];
 
-      if (shouldRetryForFormat) {
-        const retryStatus = this._tx(
-          "ui.studyAssistant.generator.retryingFormat",
-          "AI returned too many formatting errors, retrying with stricter card formatting. This may take a little longer.",
-        );
-        this.generateMessages.push({ role: "assistant", text: retryStatus });
-        this._scheduleSave();
-        this.render();
-
-        const reasonLines = rejectedReasons
-          .slice(0, 5)
-          .map((reason, idx) => `${idx + 1}. ${reason}`)
-          .join("\n");
-
-        const retryInstructions = [
-          customInstructions,
-          "Retry mode: the previous output failed parser validation too often. Return only parser-valid noteRows.",
-          "Strict format reminders:",
-          "- MCQ: use MCQ | question | plus A | correct | and O | wrong | rows only.",
-          "- OQ: use OQ | question | plus numbered step rows (1 | ... |, 2 | ... |).",
-          "- Cloze: use CQ rows with at least one {{cN::...}} deletion.",
-          "- Do not mix card-type row formats.",
-          reasonLines
-            ? `Previous parser validation errors to avoid:\n${reasonLines}`
-            : "",
-        ].filter(Boolean).join("\n\n");
-
-        this._streamAbort = new AbortController();
-        this._beginStreaming("generate");
-        result = await generateStudyAssistantSuggestionsStreaming({
-          settings,
-          input: {
-            ...generationInputBase,
-            customInstructions: retryInstructions,
-            conversationId: result.conversationId,
-          },
-          signal: this._streamAbort.signal,
-          onSuggestion: (suggestion) => {
-            collectValidSuggestions([suggestion]);
-          },
-        });
-        this._streamAbort = null;
-        this._streamAbortRequestedByUser = false;
-        setRemoteConversationForMode(this.remoteConversationsByMode, "generate", result.conversationId, this.plugin.settings.studyAssistant);
-
-        generatedSuggestionsRaw = Array.isArray(result.suggestions) ? result.suggestions : [];
-        ({ validSuggestions: generatedSuggestions, rejectedReasons } = this.validateSuggestionsForDisplay(file, generatedSuggestionsRaw));
-        collectValidSuggestions(generatedSuggestions);
+      for await (const event of this._conversation.generateCardsWorkflow({
+        userMessage: extraRequest,
+        noteContext,
+        enabledTypes,
+        targetSuggestionCount: requestedSuggestionCount,
+        generatorOutputOptions: this._generatorOutputOptions(),
+        attachedFileDataUrls: genAttachedUrls,
+        conversationId,
+      })) {
+        switch (event.type) {
+          case "suggestions":
+            collectValidSuggestions(event.suggestions);
+            if (event.rejectedReasons) rejectedReasons = event.rejectedReasons;
+            this.render();
+            break;
+          case "done":
+            this._isStreaming = false;
+            this._streamAbort = null;
+            this._streamAbortRequestedByUser = false;
+            if (event.conversationId) {
+              setRemoteConversationForMode(this.remoteConversationsByMode, "generate", event.conversationId, this.plugin.settings.studyAssistant);
+            }
+            break;
+          case "error":
+            throw event.rawError ?? new Error(event.error);
+        }
       }
 
       const rejectedCount = rejectedReasons.length;
@@ -4580,12 +4555,6 @@ export class LearnKitAssistantPopup {
       if (rejectedCount) {
         const sampleReasons = rejectedReasons.slice(0, 3).join(" | ");
         log.warn(`[study-assistant] Filtered ${rejectedCount} invalid generated suggestion(s) before display. ${sampleReasons}`);
-      }
-
-      if (shouldRetryForFormat) {
-        log.warn(
-          `[study-assistant] Triggered format retry after first-pass invalid ratio ${(firstAttemptInvalidRatio * 100).toFixed(0)}% (${firstAttemptRejected}/${firstAttemptTotal}).`,
-        );
       }
 
       this._scheduleSave();
@@ -4829,72 +4798,45 @@ export class LearnKitAssistantPopup {
 
       this._streamAbort = new AbortController();
       this._beginStreaming("assistant");
-      let result = await generateStudyAssistantSuggestionsStreaming({
-        settings,
-        input: {
-          ...generationInputBase,
-          customInstructions,
-          conversationId,
-        },
-        signal: this._streamAbort.signal,
-        onSuggestion: (suggestion) => {
-          collectValidSuggestions([suggestion]);
-        },
-      });
-      this._streamAbort = null;
-      this._streamAbortRequestedByUser = false;
-      setRemoteConversationForMode(this.remoteConversationsByMode, "generate", result.conversationId, this.plugin.settings.studyAssistant);
 
-      let generatedSuggestionsRaw = Array.isArray(result.suggestions) ? result.suggestions : [];
-      let { validSuggestions: generatedSuggestions, rejectedReasons } = this.validateSuggestionsForDisplay(file, generatedSuggestionsRaw);
-      collectValidSuggestions(generatedSuggestions);
+      const noteContext: NoteContextData = {
+        path: file.path,
+        title: file.basename || file.name,
+        noteContent,
+        noteContentForAi,
+        imageRefs,
+        imageDescriptors,
+        imageDataUrls,
+        attachedFileDataUrls: allAttachmentUrls,
+      };
 
-      const firstAttemptTotal = generatedSuggestionsRaw.length;
-      const firstAttemptRejected = rejectedReasons.length;
-      const firstAttemptInvalidRatio = firstAttemptTotal > 0 ? firstAttemptRejected / firstAttemptTotal : 0;
-      const shouldRetryForFormat = streamedSuggestions.length < requestedSuggestionCount
-        && (firstAttemptTotal === 0 || (firstAttemptTotal > 0 && firstAttemptInvalidRatio > invalidRetryThreshold));
+      let rejectedReasons: string[] = [];
 
-      if (shouldRetryForFormat) {
-        const reasonLines = rejectedReasons
-          .slice(0, 5)
-          .map((reason, idx) => `${idx + 1}. ${reason}`)
-          .join("\n");
-
-        const retryInstructions = [
-          customInstructions,
-          "Retry mode: the previous output failed parser validation too often. Return only parser-valid noteRows.",
-          "Strict format reminders:",
-          "- MCQ: use MCQ | question | plus A | correct | and O | wrong | rows only.",
-          "- OQ: use OQ | question | plus numbered step rows (1 | ... |, 2 | ... |).",
-          "- Cloze: use CQ rows with at least one {{cN::...}} deletion.",
-          "- Do not mix card-type row formats.",
-          reasonLines
-            ? `Previous parser validation errors to avoid:\n${reasonLines}`
-            : "",
-        ].filter(Boolean).join("\n\n");
-
-        this._streamAbort = new AbortController();
-        this._beginStreaming("assistant");
-        result = await generateStudyAssistantSuggestionsStreaming({
-          settings,
-          input: {
-            ...generationInputBase,
-            customInstructions: retryInstructions,
-            conversationId: result.conversationId,
-          },
-          signal: this._streamAbort.signal,
-          onSuggestion: (suggestion) => {
-            collectValidSuggestions([suggestion]);
-          },
-        });
-        this._streamAbort = null;
-        this._streamAbortRequestedByUser = false;
-        setRemoteConversationForMode(this.remoteConversationsByMode, "generate", result.conversationId, this.plugin.settings.studyAssistant);
-
-        generatedSuggestionsRaw = Array.isArray(result.suggestions) ? result.suggestions : [];
-        ({ validSuggestions: generatedSuggestions, rejectedReasons } = this.validateSuggestionsForDisplay(file, generatedSuggestionsRaw));
-        collectValidSuggestions(generatedSuggestions);
+      for await (const event of this._conversation.generateCardsWorkflow({
+        userMessage: extraRequest,
+        noteContext,
+        enabledTypes,
+        targetSuggestionCount: requestedSuggestionCount,
+        generatorOutputOptions: this._generatorOutputOptions(),
+        attachedFileDataUrls: allAttachmentUrls,
+        conversationId,
+      })) {
+        switch (event.type) {
+          case "suggestions":
+            collectValidSuggestions(event.suggestions);
+            if (event.rejectedReasons) rejectedReasons = event.rejectedReasons;
+            break;
+          case "done":
+            this._isStreaming = false;
+            this._streamAbort = null;
+            this._streamAbortRequestedByUser = false;
+            if (event.conversationId) {
+              setRemoteConversationForMode(this.remoteConversationsByMode, "generate", event.conversationId, this.plugin.settings.studyAssistant);
+            }
+            break;
+          case "error":
+            throw event.rawError ?? new Error(event.error);
+        }
       }
 
       const rejectedCount = rejectedReasons.length;
@@ -4951,12 +4893,6 @@ export class LearnKitAssistantPopup {
       if (rejectedCount) {
         const sampleReasons = rejectedReasons.slice(0, 3).join(" | ");
         log.warn(`[study-assistant] Filtered ${rejectedCount} invalid generated suggestion(s) before display. ${sampleReasons}`);
-      }
-
-      if (shouldRetryForFormat) {
-        log.warn(
-          `[study-assistant] Triggered format retry after first-pass invalid ratio ${(firstAttemptInvalidRatio * 100).toFixed(0)}% (${firstAttemptRejected}/${firstAttemptTotal}).`,
-        );
       }
 
       this._scheduleSave();
