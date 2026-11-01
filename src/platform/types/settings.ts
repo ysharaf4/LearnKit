@@ -25,10 +25,8 @@ export type LearnKitSettings = {
       fetchedAt: number | null;
     };
     enableAnimations: boolean;
-    /** Active LearnKit appearance theme preset. "glass" or "duolingo". */
-    themePreset: "glass" | "duolingo";
-    /** Enable tactile sound effects during study sessions (duolingo marimba / feedback). */
-    soundEffectsEnabled?: boolean;
+    /** Active LearnKit appearance theme preset. "glass". */
+    themePreset: "glass";
     /** Optional LearnKit-local accent override. Empty string inherits Obsidian theme accent. */
     themeAccentOverride: string;
     /** Show a launch notice modal when Obsidian starts. */

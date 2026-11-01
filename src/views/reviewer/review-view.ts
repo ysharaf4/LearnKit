@@ -34,8 +34,6 @@ import { openLearnKitImageZoom } from "./zoom";
 import { LearnKitMarkdownHelper } from "./markdown-render";
 import { isRevealOrNextKey, shouldDeferSpaceToNativeControl } from "./key-actions";
 import { processCircleFlagsInMarkdown, hydrateCircleFlagsInElement } from "../../platform/flags/flag-tokens";
-import { soundEngine } from "../../platform/core/duolingo-sfx";
-import { triggerCelebrationConfetti } from "../../platform/core/confetti";
 
 // split-out helpers
 import { isSkipEnabled, initSkipState, skipCurrentCard, ConfirmBuryForTodayModal } from "./skip";
@@ -633,7 +631,6 @@ export class LearnKitReviewerView extends ItemView {
   private _speakCardBack(card: CardRecord) {
     const audio = this.plugin.settings?.audio;
     if (!audio?.autoplay) return;
-    if (shouldSkipBackAutoplay(card)) return;
     this._doSpeakBack(card);
   }
 
@@ -1398,17 +1395,6 @@ export class LearnKitReviewerView extends ItemView {
     const id = String(card.id);
     if (this.session.graded[id]) return;
 
-    const sfxEnabled = this.plugin.settings?.general?.soundEffectsEnabled !== false;
-    soundEngine.setEnabled(sfxEnabled);
-    soundEngine.unlock();
-    if (sfxEnabled) {
-      if (rating === "good" || rating === "easy") {
-        soundEngine.playCorrect();
-      } else if (rating === "again" || rating === "hard") {
-        soundEngine.playIncorrect();
-      }
-    }
-
     const now = Date.now();
     const msToAnswer = this.computeMsToAnswer(now, id);
 
@@ -1852,14 +1838,6 @@ export class LearnKitReviewerView extends ItemView {
     this.showAnswer = true;
     this.resetTiming();
     this.render();
-
-    if (this.session.queue.length > 0) {
-      const sfxEnabled = this.plugin.settings?.general?.soundEffectsEnabled !== false;
-      if (sfxEnabled) {
-        soundEngine.playFanfare();
-      }
-      triggerCelebrationConfetti(this.contentEl);
-    }
   }
 
   private prevCard() {
@@ -2460,9 +2438,6 @@ export class LearnKitReviewerView extends ItemView {
 
         if (!this.showAnswer) {
           this.showAnswer = true;
-          if (this.plugin.settings?.general?.soundEffectsEnabled !== false) {
-            soundEngine.playClick();
-          }
           // speak back of card when answer is revealed via keyboard
           const revealCard = this.currentCard();
           if (revealCard) this._speakCardBack(revealCard);
@@ -2607,7 +2582,6 @@ export class LearnKitReviewerView extends ItemView {
           container: existingCardEl.parentElement!,
           targetEl: existingCardEl,
           interfaceLanguage: this.plugin.settings?.general?.interfaceLanguage,
-          soundEffectsEnabled: this.plugin.settings?.general?.soundEffectsEnabled !== false,
 
           session: this.session,
           showAnswer: this.showAnswer,
@@ -2889,7 +2863,6 @@ export class LearnKitReviewerView extends ItemView {
     renderSessionMode({
       container: sessionColumn ?? contentHost,
       interfaceLanguage: this.plugin.settings?.general?.interfaceLanguage,
-      soundEffectsEnabled: this.plugin.settings?.general?.soundEffectsEnabled !== false,
 
       session: this.session,
       showAnswer: this.showAnswer,

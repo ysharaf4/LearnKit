@@ -1002,30 +1002,14 @@ export class LearnKitSettingsTab extends PluginSettingTab {
               value: "glass",
               label: this._tx("ui.settings.appearance.theme.option.glass", "Glass"),
             },
-            {
-              value: "duolingo",
-              label: this._tx("ui.settings.appearance.theme.option.duolingo", "Duolingo (Feather)"),
-            },
           ],
           value: preset,
           onChange: (value) => {
             void (async () => {
-              this.plugin.settings.general.themePreset = value === "duolingo" ? "duolingo" : "glass";
+              this.plugin.settings.general.themePreset = value === "glass" ? "glass" : "glass";
               await this.plugin.saveAll();
-              document.body.setAttribute("data-learnkit-theme-preset", this.plugin.settings.general.themePreset);
             })();
           },
-        });
-      });
-
-    new Setting(wrapper)
-      .setName(this._tx("ui.settings.appearance.soundEffects.name", "Sound effects"))
-      .setDesc(this._tx("ui.settings.appearance.soundEffects.desc", "Play tactile audio feedback and celebration chimes during review."))
-      .addToggle((t) => {
-        t.setValue(this.plugin.settings.general.soundEffectsEnabled !== false);
-        t.onChange(async (v) => {
-          this.plugin.settings.general.soundEffectsEnabled = v;
-          await this.plugin.saveAll();
         });
       });
 

@@ -23,7 +23,6 @@ import { openCardAnchorInNote } from "../../platform/core/open-card-anchor";
 import { processClozeForMath, convertInlineDisplayMath, forceSingleLineDisplayMathInline, escapeAngleBracketsOutsideMathAndCode } from "../../platform/core/shared-utils";
 import { protectCodeFences, FENCE_PH } from "../reading/reading-flashcard-cloze";
 import { renderLatexMathInElement, replaceChildrenWithHTML } from "../../platform/core/ui";
-import { soundEngine } from "../../platform/core/duolingo-sfx";
 import { hydrateCircleFlagsInElement, processCircleFlagsInMarkdown } from "../../platform/flags/flag-tokens";
 import { t } from "../../platform/translations/translator";
 import { getRatingIntervalPreview } from "../../platform/core/grade-intervals";
@@ -121,9 +120,6 @@ type Args = {
 
   // edit modal
   openEditModal?: () => void;
-
-  // sound effects
-  soundEffectsEnabled?: boolean;
 
   // AOS animation control
   applyAOS?: boolean;
@@ -1657,10 +1653,6 @@ export function renderSessionMode(args: Args) {
         title: "Reveal answer",
         className: "learnkit-btn-toolbar",
         onClick: () => {
-          soundEngine.unlock();
-          if (args.soundEffectsEnabled !== false) {
-            soundEngine.playClick();
-          }
           args.setShowAnswer(true);
           args.rerender();
         },
@@ -1694,7 +1686,6 @@ export function renderSessionMode(args: Args) {
         );
       };
       const gradeAndContinue = (rating: Rating) => {
-        soundEngine.unlock();
         const usePendingManualGrade = !!args.usePendingManualGrade && !!args.gradePendingRating;
         const gradePromise = usePendingManualGrade
           ? args.gradePendingRating!(rating)
@@ -1707,13 +1698,7 @@ export function renderSessionMode(args: Args) {
         const continueBtn = makeTextButton({
           label: t(args.interfaceLanguage, "ui.reviewer.action.continue", "Continue"),
           className: "learnkit-btn-toolbar",
-          onClick: () => {
-            soundEngine.unlock();
-            if (args.soundEffectsEnabled !== false) {
-              soundEngine.playClick();
-            }
-            goNext();
-          },
+          onClick: goNext,
           kbd: isPhoneMobile ? undefined : "↵",
         });
         mainRow.appendChild(continueBtn);

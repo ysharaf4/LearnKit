@@ -640,30 +640,6 @@ export class LearnKitHomeView extends ItemView {
     const fallbackMsPerReview = 30_000;
     const estimatedMsPerCard = avgMsPerReview > 0 ? avgMsPerReview : fallbackMsPerReview;
 
-    let currentStreak = 0;
-    let streakCursor = todayIndex;
-    if (!dayMap.get(streakCursor)?.count) {
-      streakCursor = todayIndex - 1;
-    }
-    while (dayMap.get(streakCursor)?.count) {
-      currentStreak += 1;
-      streakCursor -= 1;
-    }
-
-    const isDuolingoTheme = (this.plugin.settings?.general?.themePreset ?? "glass") === "duolingo";
-    if (isDuolingoTheme) {
-      const streakBadge = makeEl("div");
-      streakBadge.className = "duo-streak-badge";
-      const iconSpan = streakBadge.createSpan({ cls: "duo-streak-icon inline-flex items-center justify-center" });
-      setIcon(iconSpan, "flame");
-      streakBadge.createSpan({
-        cls: "duo-streak-count",
-        text: String(currentStreak),
-      });
-      streakBadge.setAttribute("aria-label", tx("ui.home.streak.label", "{count} day streak", { count: currentStreak }));
-      titleFrame.right.prepend(streakBadge);
-    }
-
     const formatQueueTimeEstimate = (cardCount: number) => {
       if (cardCount <= 0) return "";
       const minutes = Math.max(0, Math.ceil((Math.max(0, cardCount) * estimatedMsPerCard) / 60000));
