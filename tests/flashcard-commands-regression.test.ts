@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 
 describe("flashcard command registrations", () => {
   it("registers add-basic-flashcard exactly once", () => {
-    const filePath = resolve(__dirname, "../src/platform/plugin/lifecycle-methods.ts");
+    const filePath = resolve(__dirname, "../src/platform/plugin/plugin-lifecycle.ts");
     const source = readFileSync(filePath, "utf8");
     const matches = source.match(/id:\s*\"add-basic-flashcard\"/g) ?? [];
     expect(matches).toHaveLength(1);

@@ -80,5 +80,26 @@ _Avoid_: Inline syntax, compact cards, quick prompts
 The domain verification pass that inspects parsed card fields for mandatory content and syntax integrity, attaching descriptive parsing error notices if malformed without throwing exceptions.
 _Avoid_: Card linting, syntax checking, card verification pass
 
+**Plugin Composition Root**:
+The central application entry point (`LearnKitPlugin`) that instantiates, configures, and coordinates decoupled domain collaborators held by composition rather than prototype mixin inheritance.
+_Avoid_: Mixin hierarchy, God plugin class, base plugin extension
+
+**Workspace Navigation**:
+The domain capability responsible for managing Obsidian workspace tabs, leaf deduplication, view activation, and study scope routing across reader, reviewer, note review, and analytics interfaces.
+_Avoid_: Tab routing, leaf opener, view switcher
+
+**Vault Synchronization**:
+The domain orchestration layer managing bidirectional consistency between Obsidian Markdown notes on disk and the internal card store, handling disk save locks, background sync passes, and data reset routines.
+_Avoid_: File sync service, vault watcher, background saver
+
+**UI Theme & Viewport Control**:
+The subsystem managing CSS accent styles, Basecoat runtime lifecycle, reading view DOM patching, and canvas/zoom scaling gestures across the plugin workspace.
+_Avoid_: Style manager, theme adapter, zoom controller
+
+**Ribbon & Reminder Control**:
+The subsystem managing Obsidian side-dock ribbon icons, periodic reminder engine timers, and developer console command registration.
+_Avoid_: Ribbon service, reminder manager, icon handler
+
+
 
 
