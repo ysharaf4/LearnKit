@@ -95,7 +95,8 @@ function isKnownReadingFieldKey(key: string): boolean {
     normalized === 'HQ' ||
     normalized === 'OQ' ||
     normalized === 'QX' ||
-    normalized === 'AX'
+    normalized === 'AX' ||
+    normalized === 'AU'
   );
 }
 
@@ -451,6 +452,7 @@ export interface LearnKitCard {
   type: "basic" | "reversed" | "cloze" | "mcq" | "io" | "hq" | "oq" | "combo" | "io-child" | "hq-child";
   comboMode?: "product" | "zip";
   title: string;
+  audioRef?: string | null;
   fields: {
     T?: string | string[];
     Q?: string | string[];
@@ -466,6 +468,7 @@ export interface LearnKitCard {
     HQ?: string | string[];
     QX?: string | string[];
     AX?: string | string[];
+    AU?: string | string[];
   };
 }
 
@@ -652,7 +655,13 @@ export function parseLearnKitCard(text: string): LearnKitCard | null {
     title = title.trim();
   }
 
-  return { anchorId, type, title, fields, comboMode };
+  let audioRef: string | null = null;
+  if (fields.AU) {
+    const rawAu = Array.isArray(fields.AU) ? fields.AU[0] : fields.AU;
+    audioRef = rawAu ? String(rawAu).trim() : null;
+  }
+
+  return { anchorId, type, title, fields, comboMode, audioRef };
 }
 
 export function saveField(fields: Record<string, string | string[]>, fieldName: string, content: string[]) {

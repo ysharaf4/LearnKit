@@ -709,6 +709,7 @@
   "ui.settings.appearance.showGreeting.name": "Home greeting",
   "ui.settings.appearance.theme.desc": "Choose the visual theme preset.",
   "ui.settings.appearance.theme.name": "Theme preset",
+  "ui.settings.appearance.theme.option.duolingo": "Duolingo (Feather)",
   "ui.settings.appearance.theme.option.glass": "Glass",
   "ui.settings.appearance.themeAccent.desc": "Choose a custom accent colour. Reset to inherit from your active Obsidian theme.",
   "ui.settings.appearance.themeAccent.name": "Accent colour",

@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS: LearnKitSettings = {
     },
     enableAnimations: true,
     themePreset: "glass",
+    soundEffectsEnabled: true,
     themeAccentOverride: "",
     showLaunchNoticeModal: true,
     enableReadingStyles: true,

@@ -157,7 +157,7 @@ AU | media/clip.m4a |
 
     it("bindTtsPlayingState sets up idle speaker, equalizer wave, and stop icons", async () => {
       const { bindTtsPlayingState, markTtsButtonActive, clearActiveTtsButton } = await import(
-        "../src/platform/integrations/tts/tts-service"
+        "../src/platform/integrations/audio/audio-player"
       );
 
       const btn = document.createElement("button");

@@ -38,7 +38,12 @@ import {
   buildCardContentHTML,
   type LearnKitCard,
 } from "./reading-helpers";
-import { getTtsService } from "../../platform/integrations/tts/tts-service";
+import {
+  playVaultAudio,
+  stopActiveVaultAudio,
+  bindAudioPlayingState,
+  markAudioButtonActive,
+} from "../../platform/integrations/audio/audio-player";
 import { hasCardAnchorForId } from "../../platform/core/identity";
 import { buildReadingFlashcardCloze } from "./reading-flashcard-cloze";
 import { computeContentSignature } from "./reading-refresh-runtime";
@@ -987,6 +992,7 @@ function addTrackedWindowListener(
 
 /** Tear down all module-level state. Called from plugin.onunload(). */
 export function teardownReadingView(): void {
+  stopActiveVaultAudio(true);
   // Disconnect MutationObserver
   if (mutationObserver) {
     mutationObserver.disconnect();
@@ -3018,7 +3024,7 @@ export function __testBuildFlashcardCloze(text: string, mode: 'front' | 'back'):
   return buildFlashcardCloze(text, mode);
 }
 
-function buildFlashcardContentHTML(card: LearnKitCard, options: { includeSpeakerButton: boolean; includeEditButton: boolean }): string {
+export function buildFlashcardContentHTML(card: LearnKitCard, options: { includeSpeakerButton: boolean; includeEditButton: boolean }): string {
   const idSeed = Math.random().toString(36).slice(2, 8);
   const encodeMdSourceAttr = (text: string): string => escapeHtml(encodeURIComponent(String(text ?? '')));
   const mdSourceAttr = (text: string): string => {
@@ -3044,8 +3050,10 @@ function buildFlashcardContentHTML(card: LearnKitCard, options: { includeSpeaker
   };
 
   const actionsFor = (side: 'front' | 'back') => {
-    const speaker = options.includeSpeakerButton && allowSpeakerForCardType
-      ? `<button class="learnkit-flashcard-action-btn learnkit-flashcard-speak-btn" type="button" data-learnkit-tts-side="${side}" aria-label="${t(undefined, "ui.reading.flashcard.readAloud", "Read aloud")}" data-tooltip-position="top"></button>`
+    const rawAudioRef = card.audioRef || (Array.isArray(card.fields?.AU) ? card.fields.AU[0] : card.fields?.AU);
+    const audioRef = rawAudioRef ? String(rawAudioRef).trim() : null;
+    const speaker = options.includeSpeakerButton && audioRef
+      ? `<button class="learnkit-flashcard-action-btn learnkit-flashcard-speak-btn" type="button" data-learnkit-tts-side="${side}" data-learnkit-audio-ref="${encodeURIComponent(audioRef)}" aria-label="${t(undefined, "ui.reading.flashcard.readAloud", "Read aloud")}" data-tooltip-position="top"></button>`
       : '';
     const edit = options.includeEditButton
       ? `<button class="learnkit-flashcard-action-btn learnkit-card-edit-btn" type="button" aria-label="${t(undefined, "ui.reading.flashcard.editCard", "Edit card")}" data-tooltip-position="top"></button>`
@@ -3415,7 +3423,7 @@ function enhanceCardElement(
     ? buildMarkdownModeContent(card, displayLabels, markdownClozeStyle)
     : macroPreset === 'flashcards'
       ? buildFlashcardContentHTML(card, {
-        includeSpeakerButton: ttsEnabled && showFlashcardAudioButton,
+        includeSpeakerButton: showFlashcardAudioButton,
         includeEditButton: showFlashcardEditButton,
       })
       : buildCardContentHTML(card);
@@ -3596,70 +3604,27 @@ function enhanceCardElement(
   for (const speakBtn of speakBtns) {
     setIcon(speakBtn, "volume-2");
     speakBtn.tabIndex = 0;
+    bindAudioPlayingState(speakBtn);
     speakBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!ttsEnabled || !audioSettings?.enabled) return;
 
-      const tts = getTtsService();
-      if (!tts.isSupported) return;
-      if (tts.isSpeaking) {
-        tts.stop();
+      const rawRef = speakBtn.getAttribute("data-learnkit-audio-ref");
+      const ref = rawRef ? decodeURIComponent(rawRef) : (card.audioRef || "");
+      if (!ref) return;
+
+      if (speakBtn.classList.contains("is-audio-playing") || speakBtn.classList.contains("is-tts-playing")) {
+        stopActiveVaultAudio(true);
         return;
       }
 
-      const side = ((e.currentTarget as HTMLElement).getAttribute("data-learnkit-tts-side") === "back") ? "back" : "front";
-      const panelSelector = side === "back" ? ".learnkit-flashcard-answer" : ".learnkit-flashcard-question";
-      const cardContent = el.querySelector<HTMLElement>('.learnkit-card-content');
-      const panel = (cardContent ?? el).querySelector<HTMLElement>(panelSelector);
-      if (!panel) return;
+      const app = window.app;
+      if (!app) return;
 
-      const isClozeLike = el.dataset.learnkitType === "cloze" || el.dataset.learnkitType === "cloze-child";
-
-      const rawQuestion = card.type === "reversed"
-        ? toTextField(card.fields.RQ)
-        : toTextField(card.fields.Q);
-      const rawAnswer = toTextField(card.fields.A);
-      const rawCloze = toTextField(card.fields.CQ);
-
-      const panelText = (panel.innerText || panel.textContent || "").replace(/\s+/g, " ").trim();
-      const imageAlt = Array.from(panel.querySelectorAll<HTMLImageElement>("img[alt]"))
-        .filter((img) => !img.classList.contains("learnkit-inline-flag") && !img.hasAttribute("data-learnkit-flag-code"))
-        .map((img) => (img.alt || "").trim())
-        .filter(Boolean)
-        .join(" ");
-      const domFallback = [panelText, imageAlt].filter(Boolean).join(" ").trim();
-
-      const readingCacheId = card.anchorId ? `${card.anchorId}-${side === "back" ? "answer" : "question"}` : undefined;
-
-      if (isClozeLike) {
-        const clozeSource = rawCloze || String(card.fields.CQ ?? "");
-        if (!clozeSource && !domFallback) return;
-        if (clozeSource) {
-          tts.speakClozeCard(clozeSource, side === "back", null, {
-            ...DEFAULT_SETTINGS.audio,
-            ...(audioSettings ?? {}),
-            scriptLanguages: {
-              ...DEFAULT_SETTINGS.audio.scriptLanguages,
-              ...(audioSettings?.scriptLanguages ?? {}),
-            },
-          }, readingCacheId);
-          return;
-        }
-      }
-
-      const fieldText = side === "back" ? rawAnswer : rawQuestion;
-      const text = (fieldText || domFallback || "").trim();
-      if (!text) return;
-      const mergedAudio = {
-        ...DEFAULT_SETTINGS.audio,
-        ...(audioSettings ?? {}),
-        scriptLanguages: {
-          ...DEFAULT_SETTINGS.audio.scriptLanguages,
-          ...(audioSettings?.scriptLanguages ?? {}),
-        },
-      };
-      tts.speakBasicCard(text, mergedAudio, readingCacheId);
+      markAudioButtonActive(speakBtn);
+      playVaultAudio(app, ref, undefined, () => {
+        // Playback finished
+      });
     });
 
     speakBtn.addEventListener("keydown", (ev) => {

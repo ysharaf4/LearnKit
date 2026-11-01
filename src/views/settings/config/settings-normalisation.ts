@@ -63,7 +63,8 @@ export function normaliseSettingsInPlace(s: LearnKitSettings): void {
   );
   s.general.githubStars ??= { count: null, fetchedAt: null };
   s.general.showLaunchNoticeModal ??= DEFAULT_SETTINGS.general.showLaunchNoticeModal;
-  s.general.themePreset = "glass";
+  s.general.themePreset = s.general.themePreset === "duolingo" ? "duolingo" : "glass";
+  s.general.soundEffectsEnabled = s.general.soundEffectsEnabled !== false;
   s.general.themeAccentOverride = normaliseHexColorOrEmpty(
     s.general.themeAccentOverride ?? DEFAULT_SETTINGS.general.themeAccentOverride,
   );

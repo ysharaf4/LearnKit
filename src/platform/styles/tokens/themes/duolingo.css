@@ -1,0 +1,187 @@
+/* ============================================================================
+   TOKENS / THEMES / DUOLINGO
+   Duolingo Feather Design System: Vibrant Owl Green, chunky 4px bottom-borders,
+   gamified motivation, friendly rounded geometry, and tactile physical press.
+   ========================================================================== */
+
+body[data-learnkit-theme-preset="duolingo"] .learnkit,
+body[data-learnkit-theme-preset="duolingo"].learnkit,
+.learnkit[data-learnkit-theme-preset="duolingo"] {
+  /* Duolingo Brand Palette */
+  --lk-duo-green: #58cc02;
+  --lk-duo-green-deep: #58a700;
+  --lk-duo-green-hover: #89e219;
+  --lk-duo-green-pale: #dbf8c5;
+
+  --lk-duo-orange: #ff9600;
+  --lk-duo-orange-deep: #cc7a00;
+  --lk-duo-orange-pale: #fff2e0;
+
+  --lk-duo-pink: #ce82ff;
+  --lk-duo-pink-deep: #9028d6;
+
+  --lk-duo-blue: #1cb0f6;
+  --lk-duo-blue-deep: #1899d6;
+  --lk-duo-blue-pale: #e1f5fe;
+
+  --lk-duo-red: #ff4b4b;
+  --lk-duo-red-deep: #cc3b3b;
+  --lk-duo-red-pale: #ffdfe0;
+
+  --lk-duo-yellow: #ffc800;
+  --lk-duo-yellow-deep: #cc9900;
+
+  /* Light Mode Surfaces */
+  --background: #ffffff;
+  --card: #ffffff;
+  --foreground: #3c3c3c;
+  --text-color: #3c3c3c;
+  --muted-foreground: #777777;
+  --border: #e5e5e5;
+  --border-dark: #d7d7d7;
+
+  --color-base-00: #ffffff;
+  --color-base-05: #f7f7f7;
+  --color-base-10: #f0f0f0;
+  --color-base-15: #e8e8e8;
+  --color-base-20: #dfdfdf;
+  --color-base-25: #d5d5d5;
+  --color-base-30: #cccccc;
+  --color-base-35: #b8b8b8;
+  --color-base-40: #a5a5a5;
+  --color-base-50: #888888;
+  --color-base-60: #666666;
+  --color-base-100: #3c3c3c;
+
+  /* Primary Brand Mapping */
+  --primary: var(--lk-duo-green);
+  --primary-foreground: #ffffff;
+  --theme-accent: var(--learnkit-theme-accent-override, var(--lk-duo-green));
+  --interactive-accent: var(--lk-duo-green);
+  --interactive-accent-hover: var(--lk-duo-green-hover);
+  --ring: var(--lk-duo-blue);
+
+  /* Tactile Physics Tokens */
+  --learnkit-border-width: 2px;
+  --learnkit-border-color: #e5e5e5;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 18px;
+  --radius-xl: 9999px;
+
+  /* Rating Colors */
+  --learnkit-again-bg: var(--lk-duo-red);
+  --learnkit-again-fg: #ffffff;
+  --learnkit-hard-bg: var(--lk-duo-orange);
+  --learnkit-hard-fg: #ffffff;
+  --learnkit-good-bg: var(--lk-duo-green);
+  --learnkit-good-fg: #ffffff;
+  --learnkit-easy-bg: var(--lk-duo-blue);
+  --learnkit-easy-fg: #ffffff;
+
+  /* Font */
+  --font-interface: "Nunito", "DIN Round Pro", "Feather Bold", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Dark Mode Tokens */
+body.theme-dark[data-learnkit-theme-preset="duolingo"] .learnkit,
+.theme-dark .learnkit[data-learnkit-theme-preset="duolingo"],
+.theme-dark[data-learnkit-theme-preset="duolingo"] .learnkit {
+  --background: #131f24;
+  --card: #1b2830;
+  --foreground: #e5e5e5;
+  --text-color: #e5e5e5;
+  --muted-foreground: #93a1a9;
+  --border: #2c3e47;
+  --border-dark: #23333d;
+
+  --color-base-00: #131f24;
+  --color-base-05: #1b2830;
+  --color-base-10: #202f38;
+  --color-base-15: #253742;
+  --color-base-20: #2c3e47;
+  --color-base-25: #334852;
+  --color-base-30: #3a525d;
+  --color-base-100: #ffffff;
+  --learnkit-border-color: #2c3e47;
+}
+
+/* Tactile 3D Buttons & Active Press */
+body[data-learnkit-theme-preset="duolingo"] .learnkit :is(button.btn, .learnkit-btn-toolbar, .lk-home-quick-study-btn, .learnkit-grade-btn-with-interval) {
+  border: 2px solid var(--border);
+  border-bottom: 4px solid var(--border-dark);
+  border-radius: var(--radius-md);
+  font-weight: 800;
+  transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), border-bottom-width 120ms ease, background 120ms ease;
+  user-select: none;
+}
+
+body[data-learnkit-theme-preset="duolingo"] .learnkit :is(button.btn, .learnkit-btn-toolbar, .lk-home-quick-study-btn, .learnkit-grade-btn-with-interval):active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+
+/* 3D Grading Buttons (High Specificity, No overrides needed) */
+body[data-learnkit-theme-preset="duolingo"] .learnkit .learnkit-btn-again.learnkit-btn-again {
+  background-color: var(--lk-duo-red);
+  border-color: var(--lk-duo-red);
+  border-bottom: 4px solid var(--lk-duo-red-deep);
+  color: #ffffff;
+}
+
+body[data-learnkit-theme-preset="duolingo"] .learnkit .learnkit-btn-hard.learnkit-btn-hard {
+  background-color: var(--lk-duo-orange);
+  border-color: var(--lk-duo-orange);
+  border-bottom: 4px solid var(--lk-duo-orange-deep);
+  color: #ffffff;
+}
+
+body[data-learnkit-theme-preset="duolingo"] .learnkit .learnkit-btn-good.learnkit-btn-good {
+  background-color: var(--lk-duo-green);
+  border-color: var(--lk-duo-green);
+  border-bottom: 4px solid var(--lk-duo-green-deep);
+  color: #ffffff;
+}
+
+body[data-learnkit-theme-preset="duolingo"] .learnkit .learnkit-btn-easy.learnkit-btn-easy {
+  background-color: var(--lk-duo-blue);
+  border-color: var(--lk-duo-blue);
+  border-bottom: 4px solid var(--lk-duo-blue-deep);
+  color: #ffffff;
+}
+
+/* Streak Flame Badge */
+body[data-learnkit-theme-preset="duolingo"] .learnkit .duo-streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--lk-duo-orange-pale);
+  color: var(--lk-duo-orange-deep);
+  border: 2px solid var(--lk-duo-orange);
+  border-bottom: 4px solid var(--lk-duo-orange-deep);
+  border-radius: var(--radius-xl);
+  font-weight: 800;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(255, 150, 0, 0.15);
+}
+
+body.theme-dark[data-learnkit-theme-preset="duolingo"] .learnkit .duo-streak-badge {
+  background: rgba(255, 150, 0, 0.15);
+  color: var(--lk-duo-orange);
+  border-color: var(--lk-duo-orange-deep);
+  border-bottom-color: #995c00;
+}
+
+body[data-learnkit-theme-preset="duolingo"] .learnkit .duo-streak-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--lk-duo-orange);
+  filter: drop-shadow(0 2px 4px rgba(255, 150, 0, 0.4));
+  animation: duo-flame-pulse 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes duo-flame-pulse {
+  0% { transform: scale(1); filter: drop-shadow(0 2px 4px rgba(255, 150, 0, 0.4)); }
+  100% { transform: scale(1.15); filter: drop-shadow(0 2px 8px rgba(255, 150, 0, 0.7)); }
+}

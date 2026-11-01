@@ -1336,9 +1336,18 @@ padding: 0px ;
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards :is(.learnkit-flashcard-question, .learnkit-flashcard-answer):hover .learnkit-flashcard-actions,
-.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:focus-within {
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:focus-within,
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:has(.is-audio-playing),
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:has(.is-tts-playing) {
   opacity: 1;
   pointer-events: auto;
+}
+
+@media (hover: none) {
+  .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions {
+    opacity: 0.85;
+    pointer-events: auto;
+  }
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-action-btn {
@@ -1365,11 +1374,30 @@ padding: 0px ;
   cursor: pointer;
 }
 
-.learnkit-pretty-card.learnkit-macro-flashcards button.learnkit-card-edit-btn,
+.learnkit-pretty-card.learnkit-macro-flashcards button.learnkit-card-edit-btn {
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
 .learnkit-pretty-card.learnkit-macro-flashcards button.learnkit-flashcard-speak-btn {
   padding: 0;
   min-width: 0;
   min-height: 0;
+  margin-inline-start: auto;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing) {
+  color: var(--text-accent, var(--interactive-accent));
+  opacity: 1;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing) .tts-icon-idle {
+  display: none;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-speak-btn:is(.is-audio-playing, .is-tts-playing) .tts-icon-playing {
+  display: inline-flex;
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-action-btn:hover,

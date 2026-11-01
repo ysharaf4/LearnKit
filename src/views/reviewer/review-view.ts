@@ -34,6 +34,8 @@ import { openLearnKitImageZoom } from "./zoom";
 import { LearnKitMarkdownHelper } from "./markdown-render";
 import { isRevealOrNextKey, shouldDeferSpaceToNativeControl } from "./key-actions";
 import { processCircleFlagsInMarkdown, hydrateCircleFlagsInElement } from "../../platform/flags/flag-tokens";
+import { soundEngine } from "../../platform/core/duolingo-sfx";
+import { triggerCelebrationConfetti } from "../../platform/core/confetti";
 
 // split-out helpers
 import { isSkipEnabled, initSkipState, skipCurrentCard, ConfirmBuryForTodayModal } from "./skip";
@@ -48,8 +50,12 @@ import {
 import { logFsrsIfNeeded, logUndoIfNeeded } from "./fsrs-log";
 import { renderTitleMarkdownIfNeeded } from "./title-markdown";
 import { findCardBlockRangeById, buildCardBlockMarkdown } from "./markdown-block";
-import { getTtsService, markTtsFieldActive, clearActiveTtsButton } from "../../platform/integrations/tts/tts-service";
-import { shouldSkipBackAutoplay } from "../../platform/integrations/tts/autoplay-policy";
+import {
+  playVaultAudio,
+  stopActiveVaultAudio,
+  markAudioButtonActive,
+  clearActiveAudioButton,
+} from "../../platform/integrations/audio/audio-player";
 import { openCardAnchorInNote } from "../../platform/core/open-card-anchor";
 import { t } from "../../platform/translations/translator";
 import { isParentCard, isTextBasedChildCard } from "../../platform/core/card-utils";
@@ -189,13 +195,6 @@ export class LearnKitReviewerView extends ItemView {
     if (!groupFilter) return true;
     const groups = Array.isArray(card.groups) ? card.groups : [];
     return groups.some((g) => g.trim().toLowerCase() === groupFilter);
-  }
-
-  private _canUseTtsForCard(card: CardRecord | null): boolean {
-    if (!card) return false;
-    const audio = this.plugin.settings?.audio;
-    if (!audio?.enabled) return false;
-    return this._cardPassesTtsGroupFilter(card, audio.limitToGroup || "");
   }
 
   private _getNormalizedHotspotStudyMode(): "individual" | "all" | "smart" {
@@ -644,11 +643,6 @@ export class LearnKitReviewerView extends ItemView {
       this._stopAttachedAudio();
       return;
     }
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) {
-      tts.stop();
-      return;
-    }
     const card = this.currentCard();
     if (card) this._doSpeakFront(card, true);
   }
@@ -659,95 +653,38 @@ export class LearnKitReviewerView extends ItemView {
       this._stopAttachedAudio();
       return;
     }
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) {
-      tts.stop();
-      return;
-    }
     const card = this.currentCard();
     if (card) this._doSpeakBack(card, true);
   }
 
   /** Replay just the MCQ question stem. */
   private _replayMcqQuestion() {
-    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
-    const card = this.currentCard();
-    if (!card || card.type !== "mcq") return;
-    const audio = this.plugin.settings?.audio;
-    if (!audio || !this._canUseTtsForCard(card)) return;
-    tts.speakMcqStem(card.stem || "", audio, `${card.id}-question`);
+    this._replayFront();
   }
 
   /** Replay just the MCQ numbered options. */
   private _replayMcqOptions() {
-    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
-    const card = this.currentCard();
-    if (!card || card.type !== "mcq") return;
-    const audio = this.plugin.settings?.audio;
-    if (!audio || !this._canUseTtsForCard(card)) return;
-    const options = normalizeCardOptions(card.options);
-    const order = this.session ? getMcqOptionOrder(this.plugin, this.session, card) : options.map((_, i) => i);
-    tts.speakMcqOptions(options, order, audio, `${card.id}-options`);
+    this._replayFront();
   }
 
   /** Replay just the MCQ correct answer. */
   private _replayMcqAnswer() {
-    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
-    const card = this.currentCard();
-    if (!card || card.type !== "mcq") return;
-    const audio = this.plugin.settings?.audio;
-    if (!audio || !this._canUseTtsForCard(card)) return;
-    const options = normalizeCardOptions(card.options);
-    const order = this.session ? getMcqOptionOrder(this.plugin, this.session, card) : options.map((_, i) => i);
-    tts.speakMcqAnswer(options, order, getCorrectIndices(card), audio, `${card.id}-answer`);
+    this._replayBack();
   }
 
   /** Replay just the OQ question stem. */
   private _replayOqQuestion() {
-    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
-    const card = this.currentCard();
-    if (!card || card.type !== "oq") return;
-    const audio = this.plugin.settings?.audio;
-    if (!audio || !this._canUseTtsForCard(card)) return;
-    tts.speakOqQuestion(card.q || "", audio, `${card.id}-oq-stem`);
+    this._replayFront();
   }
 
   /** Replay just the OQ steps (unnumbered). */
   private _replayOqSteps() {
-    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
-    const card = this.currentCard();
-    if (!card || card.type !== "oq") return;
-    const audio = this.plugin.settings?.audio;
-    if (!audio || !this._canUseTtsForCard(card)) return;
-    const steps = Array.isArray(card.oqSteps) ? card.oqSteps : [];
-    const { steps: shuffled, order } = this._getOqDisplayOrder(card, steps);
-    tts.speakOqSteps(shuffled, audio, `${card.id}-steps-${order.join("")}`);
+    this._replayFront();
   }
 
   /** Replay the OQ answer with correctness result. */
   private _replayOqAnswer() {
-    if (this._activeAttachedAudio) { this._stopAttachedAudio(); return; }
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) { tts.stop(); return; }
-    const card = this.currentCard();
-    if (!card || card.type !== "oq") return;
-    const audio = this.plugin.settings?.audio;
-    if (!audio || !this._canUseTtsForCard(card)) return;
-    const id = String(card.id);
-    const graded = this.session?.graded?.[id];
-    const pass = !!graded?.meta?.oqPass;
-    const steps = Array.isArray(card.oqSteps) ? card.oqSteps : [];
-    tts.speakOqAnswer(steps, pass, audio, `${card.id}-answer-${pass ? "pass" : "fail"}`);
+    this._replayBack();
   }
 
   /** Return OQ steps reordered to match the shuffled display order, plus the raw order indices. */
@@ -760,185 +697,37 @@ export class LearnKitReviewerView extends ItemView {
   }
 
   private _stopAttachedAudio(clearButton = true): void {
-    if (this._activeAttachedAudio) {
-      try {
-        this._activeAttachedAudio.pause();
-        this._activeAttachedAudio.currentTime = 0;
-      } catch { /* ignore */ }
-      this._activeAttachedAudio = null;
-    }
-    if (clearButton) {
-      clearActiveTtsButton();
-    }
+    stopActiveVaultAudio(clearButton);
+    this._activeAttachedAudio = null;
   }
 
   private _playAttachedAudio(card: CardRecord): void {
     const ref = card.audioRef;
     if (!ref) return;
 
-    // Stop any running TTS first
-    const tts = getTtsService();
-    if (tts.isSupported && tts.isSpeaking) tts.stop();
-
     this._stopAttachedAudio(false);
+    this._activeAttachedAudio = playVaultAudio(this.app, ref, card.sourceNotePath || "");
+  }
 
-    const cleanRef = ref.replace(/^!\[\[/, "").replace(/\]\]$/, "").trim();
-    let file = this.app.vault.getAbstractFileByPath(cleanRef);
-    if (!(file instanceof TFile)) {
-      file = this.app.metadataCache.getFirstLinkpathDest(cleanRef, card.sourceNotePath || "") ?? null;
-    }
-    if (!(file instanceof TFile)) {
-      clearActiveTtsButton();
-      return;
-    }
-
-    const src = this.app.vault.getResourcePath(file);
-    const audioEl = new Audio(src);
-    const rate = this.plugin.settings?.audio?.rate;
-    if (typeof rate === "number" && Number.isFinite(rate) && rate > 0) {
-      audioEl.playbackRate = Math.max(0.5, Math.min(2.0, rate));
-    }
-    this._activeAttachedAudio = audioEl;
-
-    const cleanup = () => {
-      if (this._activeAttachedAudio === audioEl) {
-        this._activeAttachedAudio = null;
-      }
-      clearActiveTtsButton();
-    };
-
-    audioEl.addEventListener("ended", cleanup);
-    audioEl.addEventListener("error", cleanup);
-
-    audioEl.play().catch(() => {
-      cleanup();
-    });
+  private _canUseTtsForCard(card: CardRecord | null): boolean {
+    return !!card?.audioRef;
   }
 
   /**
-   * Internal: actually speak the front of the card.
-   * @param force When true, skip the dedup key check (used for replay).
+   * Internal: speak the front of the card (attached audio).
    */
-  private _doSpeakFront(card: CardRecord, force = false) {
-    const key = `front:${card.id}`;
-    if (!force && this._ttsLastSpokenKey === key) return;
-
-    // Prefer attached audio file over TTS
+  private _doSpeakFront(card: CardRecord, _force = false) {
     if (card.audioRef) {
-      this._ttsLastSpokenKey = key;
       this._playAttachedAudio(card);
-      return;
-    }
-
-    const audio = this.plugin.settings?.audio;
-    if (!audio) return;
-    if (!this._canUseTtsForCard(card)) return;
-
-    const tts = getTtsService();
-    if (!tts.isSupported) return;
-
-    const cid = `${card.id}-question`;
-
-    if ((card.type === "basic" || card.type === "combo-child") && card.q) {
-      this._ttsLastSpokenKey = key;
-      tts.speakBasicCard(card.q, audio, cid);
-    } else if ((card.type === "reversed" || card.type === "reversed-child") && (card.q || card.a)) {
-      this._ttsLastSpokenKey = key;
-      const reversedDirection = (card as Record<string, unknown>).reversedDirection;
-      const isBackDir = card.type === "reversed-child" && reversedDirection === "back";
-      const frontText = (isBackDir || card.type === "reversed") ? (card.a || "") : (card.q || "");
-      tts.speakBasicCard(frontText, audio, cid);
-    } else if ((card.type === "cloze" || card.type === "cloze-child") && card.clozeText) {
-      this._ttsLastSpokenKey = key;
-      const targetIndex = card.type === "cloze-child" ? Number(card.clozeIndex) : null;
-      tts.speakClozeCard(card.clozeText, false, targetIndex, audio, cid);
-    } else if (card.type === "mcq" && (card.stem || card.options?.length)) {
-      this._ttsLastSpokenKey = key;
-      const options = normalizeCardOptions(card.options);
-      const order = this.session ? getMcqOptionOrder(this.plugin, this.session, card) : options.map((_, i) => i);
-      const stem = (card.stem || "").trim();
-      if (stem) {
-        // Speak stem first, then chain the options after it finishes
-        markTtsFieldActive(this.contentEl, "mcq-question");
-        tts.speakMcqStem(stem, audio, `${card.id}-question`);
-        tts.setContinuation(() => {
-          markTtsFieldActive(this.contentEl, "mcq-options");
-          tts.speakMcqOptions(options, order, audio, `${card.id}-options`);
-        });
-      } else {
-        markTtsFieldActive(this.contentEl, "mcq-options");
-        tts.speakMcqOptions(options, order, audio, `${card.id}-options`);
-      }
-    } else if (card.type === "oq" && (card.q || card.oqSteps?.length)) {
-      this._ttsLastSpokenKey = key;
-      const steps = Array.isArray(card.oqSteps) ? card.oqSteps : [];
-      const { steps: shuffled, order } = this._getOqDisplayOrder(card, steps);
-      const orderKey = order.join("");
-      const question = (card.q || "").trim();
-      if (question) {
-        // Speak question stem first, then chain the shuffled steps after it finishes
-        markTtsFieldActive(this.contentEl, "oq-question");
-        tts.speakOqQuestion(question, audio, `${card.id}-oq-stem`);
-        tts.setContinuation(() => {
-          markTtsFieldActive(this.contentEl, "oq-steps");
-          tts.speakOqSteps(shuffled, audio, `${card.id}-steps-${orderKey}`);
-        });
-      } else {
-        markTtsFieldActive(this.contentEl, "oq-steps");
-        tts.speakOqSteps(shuffled, audio, `${card.id}-steps-${orderKey}`);
-      }
     }
   }
 
   /**
-   * Internal: actually speak the back of the card.
-   * @param force When true, skip the dedup key check (used for replay).
+   * Internal: speak the back of the card (attached audio).
    */
-  private _doSpeakBack(card: CardRecord, force = false) {
-    const key = `back:${card.id}`;
-    if (!force && this._ttsLastSpokenKey === key) return;
-
-    // Prefer attached audio file over TTS
+  private _doSpeakBack(card: CardRecord, _force = false) {
     if (card.audioRef) {
-      this._ttsLastSpokenKey = key;
       this._playAttachedAudio(card);
-      return;
-    }
-
-    const audio = this.plugin.settings?.audio;
-    if (!audio) return;
-    if (!this._canUseTtsForCard(card)) return;
-
-    const tts = getTtsService();
-    if (!tts.isSupported) return;
-
-    const cid = `${card.id}-answer`;
-
-    if ((card.type === "basic" || card.type === "combo-child") && card.a) {
-      this._ttsLastSpokenKey = key;
-      tts.speakBasicCard(card.a, audio, cid);
-    } else if ((card.type === "reversed" || card.type === "reversed-child") && (card.q || card.a)) {
-      this._ttsLastSpokenKey = key;
-      const reversedDirection = (card as Record<string, unknown>).reversedDirection;
-      const isBackDir = card.type === "reversed-child" && reversedDirection === "back";
-      const backText = (isBackDir || card.type === "reversed") ? (card.q || "") : (card.a || "");
-      tts.speakBasicCard(backText, audio, cid);
-    } else if ((card.type === "cloze" || card.type === "cloze-child") && card.clozeText) {
-      this._ttsLastSpokenKey = key;
-      const targetIndex = card.type === "cloze-child" ? Number(card.clozeIndex) : null;
-      tts.speakClozeCard(card.clozeText, true, targetIndex, audio, cid);
-    } else if (card.type === "mcq" && (card.stem || card.options?.length)) {
-      this._ttsLastSpokenKey = key;
-      const options = normalizeCardOptions(card.options);
-      const order = this.session ? getMcqOptionOrder(this.plugin, this.session, card) : options.map((_, i) => i);
-      tts.speakMcqAnswer(options, order, getCorrectIndices(card), audio, cid);
-    } else if (card.type === "oq" && (card.q || card.oqSteps?.length)) {
-      this._ttsLastSpokenKey = key;
-      const id = String(card.id);
-      const graded = this.session?.graded?.[id];
-      const pass = !!graded?.meta?.oqPass;
-      const steps = Array.isArray(card.oqSteps) ? card.oqSteps : [];
-      tts.speakOqAnswer(steps, pass, audio, `${cid}-${pass ? "pass" : "fail"}`);
     }
   }
 
@@ -1379,9 +1168,9 @@ export class LearnKitReviewerView extends ItemView {
     this._titleStripEl = null;
     this._titleSubtitleEl = null;
     this._titleTimerHostEl = null;
-    // Stop any ongoing TTS or attached audio
+    // Stop any ongoing attached audio
     this._stopAttachedAudio();
-    getTtsService().stop();
+    stopActiveVaultAudio(true);
     await Promise.resolve();
   }
 
@@ -1608,6 +1397,17 @@ export class LearnKitReviewerView extends ItemView {
 
     const id = String(card.id);
     if (this.session.graded[id]) return;
+
+    const sfxEnabled = this.plugin.settings?.general?.soundEffectsEnabled !== false;
+    soundEngine.setEnabled(sfxEnabled);
+    soundEngine.unlock();
+    if (sfxEnabled) {
+      if (rating === "good" || rating === "easy") {
+        soundEngine.playCorrect();
+      } else if (rating === "again" || rating === "hard") {
+        soundEngine.playIncorrect();
+      }
+    }
 
     const now = Date.now();
     const msToAnswer = this.computeMsToAnswer(now, id);
@@ -2009,9 +1809,9 @@ export class LearnKitReviewerView extends ItemView {
   private async nextCard(_userInitiated: boolean) {
     if (!this.session) return;
 
-    // Stop any ongoing TTS or attached audio before moving to next card
+    // Stop any ongoing attached audio before moving to next card
     this._stopAttachedAudio();
-    getTtsService().stop();
+    stopActiveVaultAudio(true);
     this._ttsLastSpokenKey = "";
 
     const card = this.currentCard();
@@ -2052,6 +1852,14 @@ export class LearnKitReviewerView extends ItemView {
     this.showAnswer = true;
     this.resetTiming();
     this.render();
+
+    if (this.session.queue.length > 0) {
+      const sfxEnabled = this.plugin.settings?.general?.soundEffectsEnabled !== false;
+      if (sfxEnabled) {
+        soundEngine.playFanfare();
+      }
+      triggerCelebrationConfetti(this.contentEl);
+    }
   }
 
   private prevCard() {
@@ -2154,7 +1962,7 @@ export class LearnKitReviewerView extends ItemView {
     this.resetTiming();
     this._clearPendingHotspotAttempt();
     this._stopAttachedAudio();
-    getTtsService().stop();
+    stopActiveVaultAudio(true);
     this._ttsLastSpokenKey = "";
 
     this.clearTimer();
@@ -2652,7 +2460,10 @@ export class LearnKitReviewerView extends ItemView {
 
         if (!this.showAnswer) {
           this.showAnswer = true;
-          // TTS: speak back of card when answer is revealed via keyboard
+          if (this.plugin.settings?.general?.soundEffectsEnabled !== false) {
+            soundEngine.playClick();
+          }
+          // speak back of card when answer is revealed via keyboard
           const revealCard = this.currentCard();
           if (revealCard) this._speakCardBack(revealCard);
           this.render();
@@ -2796,6 +2607,7 @@ export class LearnKitReviewerView extends ItemView {
           container: existingCardEl.parentElement!,
           targetEl: existingCardEl,
           interfaceLanguage: this.plugin.settings?.general?.interfaceLanguage,
+          soundEffectsEnabled: this.plugin.settings?.general?.soundEffectsEnabled !== false,
 
           session: this.session,
           showAnswer: this.showAnswer,
@@ -3077,6 +2889,7 @@ export class LearnKitReviewerView extends ItemView {
     renderSessionMode({
       container: sessionColumn ?? contentHost,
       interfaceLanguage: this.plugin.settings?.general?.interfaceLanguage,
+      soundEffectsEnabled: this.plugin.settings?.general?.soundEffectsEnabled !== false,
 
       session: this.session,
       showAnswer: this.showAnswer,

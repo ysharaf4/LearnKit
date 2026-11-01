@@ -59,12 +59,9 @@ import { ParseErrorModal } from "./platform/modals/parse-error-modal";
 import { setDelimiter } from "./platform/core/delimiter";
 import {
   initialiseDedicatedApiKeyStorage,
-  initialiseDedicatedTtsApiKeyStorage,
   migrateLegacyConfigFiles,
 } from "./platform/core/settings-storage";
 import { ReminderEngine } from "./views/reminders/reminder-engine";
-import { getTtsService } from "./platform/integrations/tts/tts-service";
-import { getTtsCacheDirPath } from "./platform/integrations/tts/tts-cache";
 import { setLocaleFileReader, loadLocaleBundlesAsync } from "./platform/translations/translator";
 
 export class LearnKitPlugin extends LearnKitPluginBase {
@@ -135,24 +132,6 @@ export class LearnKitPlugin extends LearnKitPluginBase {
         filePath: this._getApiKeysFilePath(),
         settings: this.settings,
       });
-
-      await initialiseDedicatedTtsApiKeyStorage({
-        adapter: this.app?.vault?.adapter,
-        dirPath: this._getConfigDirPath(),
-        filePath: this._getTtsApiKeysFilePath(),
-        settings: this.settings,
-      });
-
-      // Wire vault adapter into TTS service for external provider caching
-      {
-        const tts = getTtsService();
-        tts.vaultAdapter = this.app?.vault?.adapter ?? null;
-        const configDir = this.app?.vault?.configDir;
-        const pluginId = this.manifest?.id;
-        if (configDir && pluginId) {
-          tts.ttsCacheDirPath = getTtsCacheDirPath(configDir, pluginId);
-        }
-      }
 
       this._registerLearnKitPinchZoom();
 

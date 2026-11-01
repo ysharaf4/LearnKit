@@ -42,7 +42,6 @@ import type {
   StudyAssistantSuggestion,
 } from "../../../platform/integrations/ai/study-assistant-types";
 import { getLinkedContextLimits } from "../../../platform/integrations/ai/study-assistant-types";
-import { getTtsService } from "../../../platform/integrations/tts/tts-service";
 import { t } from "../../../platform/translations/translator";
 import {
   type AssistantMode,
@@ -2863,65 +2862,21 @@ export class LearnKitAssistantPopup {
 
   /** Speak an assistant reply using TTS (if read-aloud is enabled). */
   private _isCompanionReplyTtsEnabled(): boolean {
-    return !!this.plugin.settings.studyAssistant.voiceChat && !!this.plugin.settings.audio.enabled;
+    return false;
   }
 
   /** Speak an assistant reply using TTS (if read-aloud is enabled). */
-  private _speakReply(text: string, messageIndex: number): void {
-    if (!this._isCompanionReplyTtsEnabled()) return;
-    const tts = getTtsService();
-    if (!tts.isSupported) return;
-    const audioSettings = this.plugin.settings.audio;
-    // Companion reply TTS follows both the Companion voice toggle and global audio master switch.
-    tts.speak(text, audioSettings.defaultLanguage || "en-US", audioSettings, true, true);
-    this._isTtsSpeaking = true;
-    this._ttsPaused = false;
-    this._activeTtsMessageIndex = messageIndex;
-    // Web Speech can report speaking=false briefly right after speak().
-    // Keep UI active for a short grace period so controls/waveform don't flicker off.
-    this._ttsStartGraceUntil = Date.now() + 1500;
-    this.render();
-    this._pollTtsEnd();
-    this._animateTtsWaveform();
+  private _speakReply(_text: string, _messageIndex: number): void {
+    // TTS disabled
   }
 
   /** Toggle playback for a specific assistant reply bubble. */
-  private _toggleReplyAudio(text: string, messageIndex: number): void {
-    if (!this._isCompanionReplyTtsEnabled()) return;
-
-    // Second click during delay cancels pending start.
-    if (this._pendingTtsMessageIndex === messageIndex) {
-      if (this._ttsStartDelayTimer != null) {
-        window.clearTimeout(this._ttsStartDelayTimer);
-        this._ttsStartDelayTimer = null;
-      }
-      this._pendingTtsMessageIndex = null;
-      return;
-    }
-
-    if (this._isTtsSpeaking && this._activeTtsMessageIndex === messageIndex) {
-      this._toggleTtsPause();
-      return;
-    }
-
-    if (this._ttsStartDelayTimer != null) {
-      window.clearTimeout(this._ttsStartDelayTimer);
-      this._ttsStartDelayTimer = null;
-    }
-
-    this._pendingTtsMessageIndex = messageIndex;
-    this._ttsStartDelayTimer = window.setTimeout(() => {
-      this._ttsStartDelayTimer = null;
-      if (this._pendingTtsMessageIndex !== messageIndex) return;
-      this._pendingTtsMessageIndex = null;
-      this._speakReply(text, messageIndex);
-    }, 250);
+  private _toggleReplyAudio(_text: string, _messageIndex: number): void {
+    // TTS disabled
   }
 
   /** Stop TTS playback and reset inline playback state. */
   private _stopTts(): void {
-    const tts = getTtsService();
-    tts.stop();
     this._collapseActiveReplyAudioControl();
     this._resetTtsPlaybackState();
     this._suppressAssistantComposerFocusOnce = true;
@@ -5723,7 +5678,6 @@ export class LearnKitAssistantPopup {
             this._stopVoiceInput();
           }
           if (this._isTtsSpeaking || this._pendingTtsMessageIndex != null) {
-            getTtsService().stop();
             this._resetTtsPlaybackState();
           }
           this._suppressAssistantComposerFocusOnce = true;
@@ -5868,7 +5822,6 @@ export class LearnKitAssistantPopup {
     const companionReplyTtsEnabled = this._isCompanionReplyTtsEnabled();
 
     if (!companionReplyTtsEnabled && (this._isTtsSpeaking || this._pendingTtsMessageIndex != null)) {
-      getTtsService().stop();
       this._resetTtsPlaybackState();
     }
 

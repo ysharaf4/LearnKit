@@ -36,7 +36,6 @@ import type { ParsedCard } from "../../../engine/parser/parser";
 import type { CardState } from "../../types/scheduler";
 import { log } from "../../../platform/core/logger";
 import { resolveImageFile, selectPreferredIoImageRef } from "../../../platform/image-occlusion/io-helpers";
-import { deleteTtsCacheForCardIds, getTtsCacheDirPath } from "../../../platform/integrations/tts/tts-cache";
 import { expandGroupPrefixes, normaliseGroupPath } from "../../../engine/indexing/group-index";
 import { loadSchedulingFromDataJson } from "../../../platform/core/store";
 import {
@@ -538,20 +537,8 @@ export async function deleteOrphanedIoImages(plugin: LearnKitPlugin): Promise<nu
   return deletedCount;
 }
 
-async function pruneTtsCacheForCards(plugin: LearnKitPlugin, cardIds: readonly string[], reason: string): Promise<void> {
-  if (!cardIds.length) return;
-
-  const adapter = plugin.app?.vault?.adapter;
-  const configDir = plugin.app?.vault?.configDir;
-  const pluginId = plugin.manifest?.id;
-  if (!adapter || !configDir || !pluginId) return;
-
-  const cacheDirPath = getTtsCacheDirPath(configDir, pluginId);
-  const removedCount = await deleteTtsCacheForCardIds(adapter, cacheDirPath, cardIds);
-
-  if (removedCount > 0) {
-    log.info(`sync: removed ${removedCount} cached TTS file(s) for ${reason} card(s)`);
-  }
+async function pruneTtsCacheForCards(_plugin: LearnKitPlugin, _cardIds: readonly string[], _reason: string): Promise<void> {
+  // TTS cache removed
 }
 
 function collectGroupKeys(cards: Record<string, CardRecord> | null | undefined): Set<string> {

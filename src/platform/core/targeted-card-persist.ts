@@ -9,7 +9,6 @@
 import type LearnKitPlugin from "../../main";
 import type { CardRecord } from "./store";
 import { normaliseGroupKey, stableIoChildId } from "../image-occlusion/mask-tool";
-import { deleteTtsCacheForCardIds, getTtsCacheDirPath } from "../integrations/tts/tts-cache";
 
 type PersistEditedCardOptions = {
   persist?: boolean;
@@ -249,19 +248,6 @@ export async function persistEditedCardAndSiblings(
   };
 
   plugin.store.upsertCard(next);
-
-  // Invalidate cached TTS audio so edited content gets re-synthesised
-  const adapter = plugin.app?.vault?.adapter;
-  const configDir = plugin.app?.vault?.configDir;
-  const pluginId = plugin.manifest?.id;
-  if (adapter && configDir && pluginId) {
-    const cacheDirPath = getTtsCacheDirPath(configDir, pluginId);
-    await deleteTtsCacheForCardIds(
-      adapter,
-      cacheDirPath,
-      [id],
-    );
-  }
 
   if (next.type === "reversed") {
     syncReversedChildren(plugin, next, now);
