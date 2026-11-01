@@ -15,7 +15,7 @@ import { renderLatexMathInElement, replaceChildrenWithHTML, setCssProps } from "
 import { hydrateRenderedMathCloze, renderClozeFront } from "../../views/reviewer/question-cloze";
 import { LearnKitMarkdownHelper } from "../../views/reviewer/markdown-render";
 import { openLearnKitImageZoom } from "../../views/reviewer/zoom";
-import { gradeCard } from "../../platform/services/grading-service";
+import { StudySession } from "../../engine/study-session/study-session";
 import type { ReviewRating } from "../../platform/types/scheduler";
 import { logFsrsIfNeeded } from "../../views/reviewer/fsrs-log";
 import { log } from "../../platform/core/logger";
@@ -55,7 +55,10 @@ export class GatekeeperModal extends Modal {
   private readonly cards: CardRecord[];
   private readonly allowBypass: boolean;
   private readonly modalScope: "workspace" | "current-tab";
-  private index = 0;
+  private readonly _session: StudySession;
+  private get index(): number {
+    return this._session.index;
+  }
   private reveal = false;
   private completed = false;
   private _md: LearnKitMarkdownHelper | null = null;
@@ -77,6 +80,12 @@ export class GatekeeperModal extends Modal {
     this.cards = args.cards;
     this.allowBypass = args.allowBypass;
     this.modalScope = args.scope;
+    this._session = StudySession.start({
+      scope: { type: "vault", key: "all", name: "All Cards" },
+      store: this.plugin.store,
+      settings: this.plugin.settings,
+      cards: this.cards,
+    });
     if (args.hotspotAttemptsMap) {
       this._hotspotAttemptsMap = args.hotspotAttemptsMap;
     }
@@ -426,7 +435,6 @@ export class GatekeeperModal extends Modal {
     try {
       const now = Date.now();
       const msToAnswer = Math.max(0, now - this._cardStartedAt);
-      const st = this.plugin.store.getState(id) ?? this.plugin.store.ensureState(id, now);
 
       const meta = {
         via: "gatekeeper",
@@ -435,17 +443,7 @@ export class GatekeeperModal extends Modal {
         gatekeeperTotal: this.cards.length,
       } as Record<string, unknown>;
 
-      const { metrics, nextDue } = await gradeCard({
-        id,
-        cardType: String(card.type || "unknown"),
-        rating,
-        now,
-        prevState: st,
-        settings: this.plugin.settings,
-        store: this.plugin.store,
-        msToAnswer,
-        meta,
-      });
+      const { metrics, nextDue } = await this._session.grade(rating, meta, msToAnswer);
 
       logFsrsIfNeeded({
         id,
@@ -456,12 +454,12 @@ export class GatekeeperModal extends Modal {
         meta,
       });
 
-      this.index += 1;
+      this._session.nextCard();
       this.reveal = false;
       this.exitWarningMode();
       this._cardStartedAt = Date.now();
 
-      if (this.index >= this.cards.length) {
+      if (this._session.isComplete) {
         this.completed = true;
         super.close();
         return;

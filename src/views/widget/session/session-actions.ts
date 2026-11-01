@@ -14,9 +14,7 @@
  */
 
 import { TFile, Notice } from "obsidian";
-import { gradeCard } from "../../../platform/services/grading-service";
-import { undoGrade } from "../../../platform/services/undo-service";
-import { buryCardAction, suspendCardAction } from "../../../platform/services/card-action-service";
+import { StudySession } from "../../../engine/study-session/study-session";
 import { deepClone, clampInt } from "../../reviewer/utilities";
 import { openBulkEditModalForCards } from "../../../platform/modals/bulk-edit";
 import { ImageOcclusionCreatorModal } from "../../../platform/modals/image-occlusion-creator-modal";
@@ -70,52 +68,17 @@ export async function gradeCurrentRating(
   if (view.session.graded[id]) return;
 
   const now = Date.now();
-  const store = view.plugin.store;
-  const reviewLogLenBefore = Array.isArray(view.plugin.store.data?.reviewLog)
-    ? view.plugin.store.data.reviewLog.length
-    : 0;
-  const analyticsLenBefore = Array.isArray(store?.data?.analytics?.events)
-    ? store.data.analytics.events.length
-    : 0;
-
-  const st = view.plugin.store.getState(id);
-  if (!st) return;
-
-  // Compute time-to-answer before grading
   const msToAnswer = computeMsToAnswer(view, now, id);
 
-  const UNDO_MAX = 3;
-  view._undoStack.push({
-    sessionStamp: view._sessionStamp,
-    id,
-    cardType: String(card.type || "unknown"),
-    rating,
-    at: now,
-    meta: meta || null,
-    sessionIndex: Number(view.session.index ?? 0),
-    showAnswer: !!view.showAnswer,
-    reviewLogLenBefore,
-    analyticsLenBefore,
-    prevState: deepClone(st),
-  });
-  if (view._undoStack.length > UNDO_MAX)
-    view._undoStack.splice(0, view._undoStack.length - UNDO_MAX);
-
-  await gradeCard({
-    id,
-    cardType: String(card.type || "unknown"),
-    rating,
-    now,
-    prevState: st,
-    settings: view.plugin.settings,
-    store,
-    msToAnswer,
-    meta: meta || undefined,
-  });
-
-  view.session.graded[id] = { rating, at: now, meta: meta || null };
-  view.session.stats.done = Object.keys(view.session.graded).length;
-  view.showAnswer = true;
+  if (view.session instanceof StudySession) {
+    await view.session.grade(
+      rating,
+      (meta || undefined) as Record<string, unknown> | undefined,
+      msToAnswer,
+    );
+    view.showAnswer = true;
+    return;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -125,51 +88,28 @@ export async function gradeCurrentRating(
 export function canUndo(view: WidgetViewLike): boolean {
   if (view.mode !== "session" || !view.session) return false;
   if (view.session.mode === "practice") return false;
-  const u = view._undoStack[view._undoStack.length - 1];
-  if (!u) return false;
-  if (u.sessionStamp !== view._sessionStamp) return false;
-  return !!view.session.graded?.[u.id];
+  if (view.session instanceof StudySession) {
+    return view.session.canUndo;
+  }
+  return false;
 }
 
 export async function undoLastGrade(view: WidgetViewLike): Promise<void> {
   if (view.mode !== "session" || !view.session) return;
-  const u = view._undoStack[view._undoStack.length - 1];
-  if (!u) return;
-  if (u.sessionStamp !== view._sessionStamp) {
-    view._undoStack.length = 0;
-    view.render();
+  if (view.session instanceof StudySession) {
+    if (!view.session.canUndo) {
+      view.render();
+      return;
+    }
+    try {
+      await view.session.undo();
+      view.showAnswer = false;
+      view.render();
+    } catch {
+      new Notice(tx(view, "ui.widget.notice.undoFailed", "Undo failed."));
+      view.render();
+    }
     return;
-  }
-  if (!view.session.graded?.[u.id]) {
-    view._undoStack.length = 0;
-    view.render();
-    return;
-  }
-
-  view._undoStack.pop();
-
-  try {
-    await undoGrade({
-      id: u.id,
-      prevState: u.prevState,
-      reviewLogLenBefore: u.reviewLogLenBefore,
-      analyticsLenBefore: u.analyticsLenBefore,
-      storeMutated: true,
-      analyticsMutated: true,
-      store: view.plugin.store,
-    });
-
-    delete view.session.graded[u.id];
-    view.session.stats.done = Object.keys(view.session.graded || {}).length;
-
-    const maxIdx = Math.max(0, Number(view.session.queue?.length ?? 0));
-    view.session.index = clampInt(u.sessionIndex, 0, maxIdx);
-    view.showAnswer = false;
-
-    view.render();
-  } catch {
-    new Notice(tx(view, "ui.widget.notice.undoFailed", "Undo failed."));
-    view.render();
   }
 }
 
@@ -186,16 +126,12 @@ export async function buryCurrentCard(view: WidgetViewLike): Promise<void> {
   const id = String(card.id);
   if (view.session.graded[id]) return;
 
-  const st = view.plugin.store.getState(id);
-  if (!st) return;
-
-  const now = Date.now();
-  await buryCardAction({ id, prevState: st, now, store: view.plugin.store });
-
-  view.session.graded[id] = { rating: "again", at: now, meta: { action: "bury" } };
-  view.session.stats.done = Object.keys(view.session.graded).length;
-  view.showAnswer = false;
-  await nextCard(view);
+  if (view.session instanceof StudySession) {
+    await view.session.buryCurrent();
+    view.showAnswer = false;
+    await nextCard(view);
+    return;
+  }
 }
 
 export async function suspendCurrentCard(view: WidgetViewLike): Promise<void> {
@@ -207,16 +143,12 @@ export async function suspendCurrentCard(view: WidgetViewLike): Promise<void> {
   const id = String(card.id);
   if (view.session.graded[id]) return;
 
-  const st = view.plugin.store.getState(id);
-  if (!st) return;
-
-  const now = Date.now();
-  await suspendCardAction({ id, prevState: st, now, store: view.plugin.store });
-
-  view.session.graded[id] = { rating: "again", at: now, meta: { action: "suspend" } };
-  view.session.stats.done = Object.keys(view.session.graded).length;
-  view.showAnswer = false;
-  await nextCard(view);
+  if (view.session instanceof StudySession) {
+    await view.session.suspendCurrent();
+    view.showAnswer = false;
+    await nextCard(view);
+    return;
+  }
 }
 
 /* ------------------------------------------------------------------ */

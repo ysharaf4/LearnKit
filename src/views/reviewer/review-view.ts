@@ -13,9 +13,7 @@ import { log } from "../../platform/core/logger";
 import { queryFirst, setCssProps } from "../../platform/core/ui";
 import { createTitleStripFrame } from "../../platform/core/view-primitives";
 import { LEARNKIT_HOME_CONTENT_SHELL_CLASS } from "../../platform/core/ui-classes";
-import { gradeCard } from "../../platform/services/grading-service";
-import { undoGrade } from "../../platform/services/undo-service";
-import { buryCardAction, suspendCardAction } from "../../platform/services/card-action-service";
+import { StudySession } from "../../engine/study-session/study-session";
 import { syncOneFile } from "../../platform/integrations/sync/sync-engine";
 import { ParseErrorModal } from "../../platform/modals/parse-error-modal";
 import { openBulkEditModalForCards } from "../../platform/modals/bulk-edit";
@@ -38,7 +36,7 @@ import { isRevealOrNextKey, shouldDeferSpaceToNativeControl } from "./key-action
 import { processCircleFlagsInMarkdown, hydrateCircleFlagsInElement } from "../../platform/flags/flag-tokens";
 
 // split-out helpers
-import { isSkipEnabled, initSkipState, skipCurrentCard } from "./skip";
+import { isSkipEnabled, initSkipState, skipCurrentCard, ConfirmBuryForTodayModal } from "./skip";
 import {
   initMcqOrderState,
   isMcqOptionRandomisationEnabled,
@@ -971,67 +969,42 @@ export class LearnKitReviewerView extends ItemView {
 
   canUndo(): boolean {
     if (this.mode !== "session" || !this.session) return false;
-    const u = this._undoStack[this._undoStack.length - 1];
-    if (!u) return false;
-    if (this.getSessionStamp() !== u.sessionStamp) return false;
-    return !!this.session.graded?.[u.id];
+    if (this.session instanceof StudySession) {
+      return this.session.canUndo;
+    }
+    return false;
   }
 
   async undoLastGrade(): Promise<void> {
     if (this.mode !== "session" || !this.session) return;
 
-    const u = this._undoStack[this._undoStack.length - 1];
-    if (!u) return;
-
-    if (this.getSessionStamp() !== u.sessionStamp) {
-      this.clearUndo();
-      this.render();
+    if (this.session instanceof StudySession) {
+      if (!this.session.canUndo) {
+        this.clearUndo();
+        this.render();
+        return;
+      }
+      try {
+        const frame = await this.session.undo();
+        this.showAnswer = false;
+        if (frame) {
+          logUndoIfNeeded({
+            id: frame.id,
+            cardType: frame.cardType,
+            ratingUndone: frame.rating,
+            meta: frame.meta ?? undefined,
+            storeReverted: frame.storeMutated,
+            fromState: null,
+            toState: frame.prevState,
+          });
+        }
+        this.render();
+      } catch (e) {
+        log.error(`UNDO: failed`, e);
+        new Notice(this.tx("ui.reviewer.notice.undoFailedConsole", "LearnKit – undo failed"));
+        this.render();
+      }
       return;
-    }
-
-    if (!this.session.graded?.[u.id]) {
-      this.clearUndo();
-      this.render();
-      return;
-    }
-
-    this._undoStack.pop();
-
-    try {
-      const { fromState, toState } = await undoGrade({
-        id: u.id,
-        prevState: u.prevState,
-        reviewLogLenBefore: u.reviewLogLenBefore,
-        analyticsLenBefore: u.analyticsLenBefore,
-        storeMutated: u.storeMutated,
-        analyticsMutated: u.analyticsMutated,
-        store: this.plugin.store,
-      });
-
-      delete this.session.graded[u.id];
-      this.session.stats.done = Object.keys(this.session.graded || {}).length;
-
-      const maxIdx = Math.max(0, Number(this.session.queue?.length ?? 0));
-      this.session.index = clampInt(u.sessionIndex, 0, maxIdx);
-
-      // Reset to show question (front) to allow restudying
-      this.showAnswer = false;
-
-      logUndoIfNeeded({
-        id: u.id,
-        cardType: u.cardType,
-        ratingUndone: u.rating,
-        meta: u.meta ?? undefined,
-        storeReverted: u.storeMutated,
-        fromState,
-        toState,
-      });
-
-      this.render();
-    } catch (e) {
-      log.error(`UNDO: failed`, e);
-      new Notice(this.tx("ui.reviewer.notice.undoFailedConsole", "LearnKit – undo failed"));
-      this.render();
     }
   }
 
@@ -1174,16 +1147,14 @@ export class LearnKitReviewerView extends ItemView {
     this.clearCountdown();
     closeMoreMenuImpl(this);
 
-    const s: Session = {
+    const s = StudySession.start({
       scope,
-      queue,
-      index: 0,
-      graded: {},
-      stats: { total: queue.length, done: 0 },
-    };
-
-    s.practice = true;
-    s._bcStamp = ++this._sessionStamp;
+      store: this.plugin.store,
+      settings: this.plugin.settings,
+      practice: true,
+      cards: queue,
+      sessionStamp: ++this._sessionStamp,
+    });
 
     this.mode = "session";
     this.session = s;
@@ -1250,6 +1221,26 @@ export class LearnKitReviewerView extends ItemView {
       });
     } catch (e) {
       log.warn("LearnKit: failed to log skip", e);
+    }
+
+    if (this.session instanceof StudySession) {
+      const res = this.session.skipCurrent(meta || undefined);
+      if (res.promptBury) {
+        new ConfirmBuryForTodayModal(
+          this.app,
+          () => {
+            void this.buryCurrentCard();
+          },
+          () => {},
+          this.plugin.settings?.general?.interfaceLanguage,
+        ).open();
+        return;
+      }
+      this.clearTimer();
+      this.clearCountdown();
+      this.showAnswer = false;
+      this.render();
+      return;
     }
 
     if (this.isPracticeSession()) {
@@ -1480,10 +1471,20 @@ export class LearnKitReviewerView extends ItemView {
     }
   }
 
-  private buildSession(scope: Scope): Session {
+  private buildSession(scope: Scope): StudySession {
     const options = this._pendingSessionBuildOptions ?? undefined;
     this._pendingSessionBuildOptions = null;
-    return buildSession(this.plugin, scope, options);
+    return StudySession.start({
+      scope,
+      store: this.plugin.store,
+      settings: this.plugin.settings,
+      practice: this._sessionPracticeMode,
+      targetCount: options?.targetCount,
+      dueOnly: options?.dueOnly,
+      ignoreDailyNewLimit: options?.ignoreDailyNewLimit,
+      ignoreDailyReviewLimit: options?.ignoreDailyReviewLimit,
+      sessionStamp: ++this._sessionStamp,
+    });
   }
 
   private getNextDueInScope(scope: Scope): number | null {
@@ -1609,140 +1610,36 @@ export class LearnKitReviewerView extends ItemView {
     if (this.session.graded[id]) return;
 
     const now = Date.now();
-
-    const stamp = this.getSessionStamp();
-
-    const store = this.plugin.store;
-
-    const reviewLogLenBefore = Array.isArray(this.plugin.store.data?.reviewLog)
-      ? this.plugin.store.data.reviewLog.length
-      : 0;
-
-    const analyticsLenBefore = Array.isArray(store.data.analytics?.events)
-      ? store.data.analytics.events.length
-      : 0;
-
     const msToAnswer = this.computeMsToAnswer(now, id);
 
-    if (this.isPracticeSession()) {
-      this._undoStack.push({
-        sessionStamp: stamp,
-        id,
-        cardType: String(card.type || "unknown"),
-        rating,
-        at: now,
-        meta: meta || null,
-
-        sessionIndex: Number(this.session.index ?? 0),
-        showAnswer: !!this.showAnswer,
-
-        storeMutated: false,
-        analyticsMutated: true,
-
-        reviewLogLenBefore,
-        analyticsLenBefore,
-
-        prevState: null,
-      });
-      if (this._undoStack.length > LearnKitReviewerView.UNDO_MAX)
-        this._undoStack.splice(0, this._undoStack.length - LearnKitReviewerView.UNDO_MAX);
-
-      // persist analytics for practice
+    if (this.session instanceof StudySession) {
       try {
-        if (typeof store.appendAnalyticsReview === "function") {
-          store.appendAnalyticsReview({
-            at: now,
-            cardId: id,
-            cardType: String(card.type || "unknown"),
-            result: rating,
-            mode: "practice",
-            msToAnswer,
-            scope: this.session.scope,
-            meta: meta || undefined,
-          });
-          await store.persist();
+        const gradeRes = await this.session.grade(
+          rating,
+          (meta || undefined) as Record<string, unknown> | undefined,
+          msToAnswer,
+        );
+
+        if (this._isCoachSession && this._trackCoachProgress && !this.isPracticeSession()) {
+          await this.plugin.recordCoachProgressForScope(this.session.scope, "flashcard", 1);
         }
+
+        this.showAnswer = true;
+        this._timing.startedAt = 0;
+
+        logFsrsIfNeeded({
+          id,
+          cardType: String(card.type || "unknown"),
+          rating,
+          metrics: gradeRes.metrics,
+          nextDue: gradeRes.nextDue,
+          meta: meta || undefined,
+        });
       } catch (e) {
-        log.warn(`failed to persist practice analytics`, e);
+        this.clearUndo();
+        throw e;
       }
-
-      this.session.graded[id] = { rating, at: now, meta: meta || undefined };
-      this.session.stats.done = Object.keys(this.session.graded).length;
-
-      this.showAnswer = true;
-      this._timing.startedAt = 0;
       return;
-    }
-
-    const st = this.plugin.store.getState(id);
-    if (!st) return;
-
-    this._undoStack.push({
-      sessionStamp: stamp,
-      id,
-      cardType: String(card.type || "unknown"),
-      rating,
-      at: now,
-      meta: meta || null,
-
-      sessionIndex: Number(this.session.index ?? 0),
-      showAnswer: !!this.showAnswer,
-
-      storeMutated: true,
-      analyticsMutated: true,
-
-      reviewLogLenBefore,
-      analyticsLenBefore,
-
-      prevState: deepClone(st),
-    });
-    if (this._undoStack.length > LearnKitReviewerView.UNDO_MAX)
-      this._undoStack.splice(0, this._undoStack.length - LearnKitReviewerView.UNDO_MAX);
-
-    try {
-      const { nextDue, metrics } = await gradeCard({
-        id,
-        cardType: String(card.type || "unknown"),
-        rating,
-        now,
-        prevState: st,
-        settings: this.plugin.settings,
-        store,
-        msToAnswer,
-        scope: this.session.scope,
-        meta: meta || undefined,
-      });
-
-      if (this._isCoachSession && this._trackCoachProgress && !this.isPracticeSession()) {
-        await this.plugin.recordCoachProgressForScope(this.session.scope, "flashcard", 1);
-      }
-
-      const shouldRequeueSameDay = this.mode === "session"
-        && this._shouldRequeueSameDayAgain(rating, nextDue, now);
-      let gradeMeta = meta && typeof meta === "object" && !Array.isArray(meta)
-        ? { ...meta }
-        : undefined;
-      if (shouldRequeueSameDay) {
-        gradeMeta = { ...(gradeMeta || {}), sameDayRequeue: true };
-      }
-
-      this.session.graded[id] = { rating, at: now, meta: gradeMeta };
-      this.session.stats.done = Object.keys(this.session.graded).length;
-
-      this.showAnswer = true;
-      this._timing.startedAt = 0;
-
-      logFsrsIfNeeded({
-        id,
-        cardType: String(card.type || "unknown"),
-        rating,
-        metrics,
-        nextDue,
-        meta: meta || undefined,
-      });
-    } catch (e) {
-      this.clearUndo();
-      throw e;
     }
   }
 
@@ -1757,18 +1654,12 @@ export class LearnKitReviewerView extends ItemView {
     const id = String(card.id);
     if (this.session.graded[id]) return;
 
-    const st = this.plugin.store.getState(id);
-    if (!st) return;
-
-    const now = Date.now();
-
-    await buryCardAction({ id, prevState: st, now, store: this.plugin.store });
-
-    this.session.graded[id] = { rating: "again", at: now, meta: { action: "bury" } };
-    this.session.stats.done = Object.keys(this.session.graded).length;
-
-    this.showAnswer = false;
-    void this.nextCard(true);
+    if (this.session instanceof StudySession) {
+      await this.session.buryCurrent();
+      this.showAnswer = false;
+      void this.nextCard(true);
+      return;
+    }
   }
 
   async suspendCurrentCard() {
@@ -1781,18 +1672,12 @@ export class LearnKitReviewerView extends ItemView {
     const id = String(card.id);
     if (this.session.graded[id]) return;
 
-    const st = this.plugin.store.getState(id);
-    if (!st) return;
-
-    const now = Date.now();
-
-    await suspendCardAction({ id, prevState: st, now, store: this.plugin.store });
-
-    this.session.graded[id] = { rating: "again", at: now, meta: { action: "suspend" } };
-    this.session.stats.done = Object.keys(this.session.graded).length;
-
-    this.showAnswer = false;
-    void this.nextCard(true);
+    if (this.session instanceof StudySession) {
+      await this.session.suspendCurrent();
+      this.showAnswer = false;
+      void this.nextCard(true);
+      return;
+    }
   }
 
 

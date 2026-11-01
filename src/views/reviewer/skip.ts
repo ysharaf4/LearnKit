@@ -31,7 +31,7 @@ function computeDefaultSkipDelay(remainingAfterThisCard: number): number {
   return Math.max(8, Math.min(20, n));
 }
 
-class ConfirmBuryForTodayModal extends Modal {
+export class ConfirmBuryForTodayModal extends Modal {
   private _onBury: () => void;
   private _onIgnore: () => void;
   private _interfaceLanguage?: string;

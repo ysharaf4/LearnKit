@@ -11,7 +11,7 @@ import { ItemView, Notice, type TFile, type WorkspaceLeaf } from "obsidian";
 import { VIEW_TYPE_REVIEWER, VIEW_TYPE_WIDGET } from "../../platform/core/constants";
 import { LearnKitMarkdownHelper } from "../reviewer/markdown-render";
 import { openLearnKitImageZoom } from "../reviewer/zoom";
-import { buildSession as buildReviewerSession } from "../reviewer/session";
+import { StudySession } from "../../engine/study-session/study-session";
 import { processCircleFlagsInMarkdown, hydrateCircleFlagsInElement } from "../../platform/flags/flag-tokens";
 import type { Scope } from "../reviewer/types";
 import * as IO from "../../platform/image-occlusion/image-occlusion-index";
@@ -630,19 +630,19 @@ export class LearnKitWidgetView extends ItemView {
     const scope = this.getStudyScopeForActiveFile();
     if (!scope) return null;
 
-    const reviewSession = buildReviewerSession(this.plugin, scope);
-    const queue = this._normalizeHotspotQueue(reviewSession.queue || []);
+    const session = StudySession.start({
+      scope,
+      store: this.plugin.store,
+      settings: this.plugin.settings,
+    });
+    session.scopeName = scope.name || f.basename;
+    session.scopeType = scope.type === "folder" ? "folder" : "note";
+    session.scopeKey = scope.key;
+    session.queue = this._normalizeHotspotQueue(session.queue || []);
+    session.stats.total = session.queue.length;
+    session.stats.remaining = session.queue.length;
 
-    return {
-      scopeName: scope.name || f.basename,
-      scopeType: scope.type === "folder" ? "folder" : "note",
-      scopeKey: scope.key,
-      queue,
-      index: Math.max(0, Math.min(Number(reviewSession.index ?? 0), queue.length)),
-      graded: {},
-      stats: { total: queue.length, done: 0 },
-      mode: "scheduled",
-    };
+    return session as unknown as Session;
   }
 
   private buildPracticeSessionForActiveNote(): Session | null {
@@ -652,7 +652,7 @@ export class LearnKitWidgetView extends ItemView {
     if (!scope) return null;
 
     const cards = getCardsInActiveScope(this.plugin.store, f, this.plugin.settings);
-    const queue = this._normalizeHotspotQueue(filterReviewableCards(cards).sort((a, b) => {
+    const sortedCards = filterReviewableCards(cards).sort((a, b) => {
       const pathA = String(a?.sourceNotePath ?? "");
       const pathB = String(b?.sourceNotePath ?? "");
       const pathCmp = pathA.localeCompare(pathB);
@@ -661,18 +661,20 @@ export class LearnKitWidgetView extends ItemView {
       const lineB = Number(b?.sourceStartLine ?? 0);
       if (lineA !== lineB) return lineA - lineB;
       return String(a?.id ?? "").localeCompare(String(b?.id ?? ""));
-    }));
+    });
 
-    return {
-      scopeName: scope.name || f.basename,
-      scopeType: scope.type === "folder" ? "folder" : "note",
-      scopeKey: scope.key,
-      queue,
-      index: 0,
-      graded: {},
-      stats: { total: queue.length, done: 0 },
-      mode: "practice",
-    };
+    const session = StudySession.start({
+      scope,
+      store: this.plugin.store,
+      settings: this.plugin.settings,
+      practice: true,
+      cards: this._normalizeHotspotQueue(sortedCards),
+    });
+    session.scopeName = scope.name || f.basename;
+    session.scopeType = scope.type === "folder" ? "folder" : "note";
+    session.scopeKey = scope.key;
+
+    return session as unknown as Session;
   }
 
   /* ---------------------------------------------------------------- */
