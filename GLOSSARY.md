@@ -44,4 +44,8 @@ _Avoid_: Disable, archive, freeze
 Postpone a card to the end of the active study session without altering its scheduling interval.
 _Avoid_: Pass, delay, postpone
 
+**Anki Package**:
+A self-contained archive (.apkg) containing an SQLite collection database and bundled media files, representing exported or imported flashcards and scheduling history.
+_Avoid_: Anki zip, deck export archive, apkg bundle
+
 

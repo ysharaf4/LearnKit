@@ -11,7 +11,7 @@ import {
   collectMediaRefs,
   rewriteFieldForAnki,
   rewriteFieldForLearnKit,
-} from "../src/platform/integrations/anki/anki-media";
+} from "../src/platform/integrations/anki/anki-package";
 
 describe("collectMediaRefs", () => {
   it("finds ![[...]] wiki-style image refs", () => {

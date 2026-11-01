@@ -3,7 +3,7 @@ import initSqlJs from "sql.js";
 import type LearnKitPlugin from "../src/main";
 import type { NoteReviewRow } from "../src/platform/core/note-review-sqlite";
 
-vi.mock("../src/platform/integrations/anki/anki-sql", async () => {
+vi.mock("../src/platform/core/sql-wasm", async () => {
   const SQL = await initSqlJs();
   return { getSqlJs: vi.fn(async () => SQL) };
 });

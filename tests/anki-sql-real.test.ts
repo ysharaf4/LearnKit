@@ -40,7 +40,7 @@ import {
   readCards,
   readCollectionCrt,
 } from "../src/platform/integrations/anki/anki-sql";
-import { packApkg, unpackApkg } from "../src/platform/integrations/anki/anki-zip";
+import { packApkg, unpackApkg } from "../src/platform/integrations/anki/anki-package";
 import type { AnkiNoteRow, AnkiCardRow } from "../src/platform/integrations/anki/anki-constants";
 
 const EXPECTED_FLDS = "Front text\u001fBack text";

@@ -13,7 +13,7 @@
 
 import type { Database } from "sql.js";
 import type LearnKitPlugin from "../../main";
-import { getSqlJs } from "../integrations/anki/anki-sql";
+import { getSqlJs } from "./sql-wasm";
 import { getSchedulingDirPath, copyDbToVaultSyncFolder, reconcileFromVaultSync } from "./sqlite-store";
 
 const COACH_DB = "coach.db";

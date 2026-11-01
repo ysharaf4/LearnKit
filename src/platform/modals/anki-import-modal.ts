@@ -10,7 +10,7 @@
 import { Modal, Notice, setIcon } from "obsidian";
 import type LearnKitPlugin from "../../main";
 import { log } from "../core/logger";
-import { previewApkg, importFromApkg, type ImportOptions, type ImportPreview, type ImportResult, type ModelFieldMapping } from "../../platform/integrations/anki/anki-import";
+import { previewApkg, importFromApkg, type ImportOptions, type ImportPreview, type ImportResult, type ModelFieldMapping } from "../../platform/integrations/anki/anki-package";
 import { setModalTitle, createThemedDropdown, scopeModalToWorkspace } from "./modal-utils";
 import { setCssProps } from "../core/ui";
 import { txCommon } from "../translations/ui-common";

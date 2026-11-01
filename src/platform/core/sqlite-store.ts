@@ -14,7 +14,7 @@
 import type LearnKitPlugin from "../../main";
 import type { Database } from "sql.js";
 import { defaultStore, JsonStore } from "./store";
-import { getSqlJs } from "../integrations/anki/anki-sql";
+import { getSqlJs } from "./sql-wasm";
 import { log } from "./logger";
 
 const SCHEDULING_DIR = "scheduling";

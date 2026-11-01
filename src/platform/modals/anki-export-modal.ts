@@ -11,7 +11,7 @@
 import { Modal, Notice, setIcon } from "obsidian";
 import type LearnKitPlugin from "../../main";
 import { log } from "../core/logger";
-import { exportToApkg, type ExportOptions } from "../../platform/integrations/anki/anki-export";
+import { exportToApkg, type ExportOptions } from "../../platform/integrations/anki/anki-package";
 import { setModalTitle, createThemedDropdown, scopeModalToWorkspace } from "./modal-utils";
 import { getGroupIndex } from "../../engine/indexing/group-index";
 import { buildDeckTree, type DeckNode } from "../../engine/deck/deck-tree";

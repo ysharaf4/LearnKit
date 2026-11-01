@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import initSqlJs from "sql.js";
 import type LearnKitPlugin from "../src/main";
 
-vi.mock("../src/platform/integrations/anki/anki-sql", async () => {
+vi.mock("../src/platform/core/sql-wasm", async () => {
   const SQL = await initSqlJs();
   return { getSqlJs: vi.fn(async () => SQL) };
 });

@@ -1,65 +1,21 @@
 /**
  * @file tests/anki-import-export.test.ts
- * @summary Unit tests for anki import export.test behavior.
- *
- * @exports
- *  - (no named exports in this module)
+ * @summary Integration tests for anki import/export modal adapters.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { TFile } from "obsidian";
-import type { AnkiNoteRow, AnkiCardRow, AnkiModel, AnkiDeck } from "../src/platform/integrations/anki/anki-constants";
 
-const ankiSqlMock = vi.hoisted(() => ({
-  mockNotes: [] as AnkiNoteRow[],
-  mockCards: [] as AnkiCardRow[],
-  mockModels: new Map<number, AnkiModel>(),
-  mockDecks: new Map<number, AnkiDeck>(),
-  insertCollection: vi.fn(),
-  insertNote: vi.fn(),
-  insertCard: vi.fn(),
-  insertRevlogEntry: vi.fn(),
-  fakeDb: {
-    export: () => new Uint8Array([1, 2, 3]),
-    close: vi.fn(),
-  },
-}));
-
-vi.mock("../src/platform/integrations/anki/anki-sql", () => {
+// Override setup-vitest.ts's empty-Uint8Array mock with the real deflated binary.
+vi.mock("sql.js/dist/sql-wasm.wasm", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const zlib = await import("node:zlib");
+  const raw = new Uint8Array(
+    fs.readFileSync(path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm")),
+  );
   return {
-    getSqlJs: vi.fn(async () => ({
-      Database: class {
-        constructor(_bytes: Uint8Array) {}
-        close() {}
-      },
-    })),
-    readNotes: vi.fn(() => ankiSqlMock.mockNotes),
-    readCards: vi.fn(() => ankiSqlMock.mockCards),
-    readModels: vi.fn(() => ankiSqlMock.mockModels),
-    readDecks: vi.fn(() => ankiSqlMock.mockDecks),
-    readCollectionCrt: vi.fn(() => 1700000000),
-    createEmptyAnkiDb: vi.fn(async () => ankiSqlMock.fakeDb),
-    insertCollection: ankiSqlMock.insertCollection,
-    insertNote: ankiSqlMock.insertNote,
-    insertCard: ankiSqlMock.insertCard,
-    insertRevlogEntry: ankiSqlMock.insertRevlogEntry,
-  };
-});
-
-vi.mock("../src/platform/integrations/anki/anki-zip", () => {
-  return {
-    unpackApkg: vi.fn(() => ({ db: new Uint8Array([9]), media: new Map() })),
-    packApkg: vi.fn(() => new Uint8Array([7, 7])),
-  };
-});
-
-vi.mock("../src/platform/integrations/anki/anki-media", () => {
-  return {
-    saveMediaToVault: vi.fn(async () => new Map()),
-    rewriteFieldForLearnKit: (s: string) => s,
-    collectMediaRefs: (_fields: (string | null | undefined)[]) => new Set<string>(),
-    resolveVaultMedia: vi.fn(async () => new Map()),
-    rewriteFieldForAnki: (s: string) => s,
+    default: new Uint8Array(zlib.deflateSync(raw, { level: zlib.constants.Z_BEST_COMPRESSION })),
   };
 });
 
@@ -79,10 +35,7 @@ vi.mock("../src/platform/integrations/sync/sync-engine", () => {
   };
 });
 
-import { importFromApkg } from "../src/platform/integrations/anki/anki-import";
-import { exportToApkg } from "../src/platform/integrations/anki/anki-export";
-import { ANKI_FIELD_SEPARATOR, DEFAULT_DECK_ID } from "../src/platform/integrations/anki/anki-constants";
-import { packApkg } from "../src/platform/integrations/anki/anki-zip";
+import { importFromApkg, exportToApkg, AnkiPackage } from "../src/platform/integrations/anki/anki-package";
 
 class MemoryVault {
   files = new Map<string, { file: TFile; content: string }>();
@@ -122,104 +75,31 @@ function makePlugin(vault: MemoryVault) {
       getAllCards: () => [],
     },
     settings: { scheduler: { learningStepsMinutes: [10], relearningStepsMinutes: [], requestRetention: 0.9 } },
+    notifyWidgetCardsSynced: vi.fn(),
   } as any;
 }
 
 describe("anki import/export pipelines", () => {
-  beforeEach(() => {
-    ankiSqlMock.mockNotes = [];
-    ankiSqlMock.mockCards = [];
-    ankiSqlMock.mockModels = new Map<number, AnkiModel>();
-    ankiSqlMock.mockDecks = new Map<number, AnkiDeck>();
-    ankiSqlMock.insertCollection.mockClear();
-    ankiSqlMock.insertNote.mockClear();
-    ankiSqlMock.insertCard.mockClear();
-    ankiSqlMock.insertRevlogEntry.mockClear();
-  });
-
   it("imports a basic note into markdown", async () => {
-    ankiSqlMock.mockNotes = [
-      {
-        id: 10,
-        guid: "g",
-        mid: 1,
-        mod: 1,
-        usn: -1,
-        tags: "Tag1",
-        flds: ["Front", "Back", "Extra"].join(ANKI_FIELD_SEPARATOR),
-        sfld: "Front",
-        csum: 0,
-        flags: 0,
-        data: "",
-      },
-    ];
-
-    ankiSqlMock.mockCards = [
-      {
-        id: 20,
-        nid: 10,
-        did: DEFAULT_DECK_ID,
-        ord: 0,
-        mod: 1,
-        usn: -1,
-        type: 0,
-        queue: 0,
-        due: 0,
-        ivl: 0,
-        factor: 0,
-        reps: 0,
-        lapses: 0,
-        left: 0,
-        odue: 0,
-        odid: 0,
-        flags: 0,
-        data: "",
-      },
-    ];
-
-    ankiSqlMock.mockModels.set(1, {
-      id: 1,
-      name: "Basic",
-      type: 0,
-      flds: [
-        { name: "Front", ord: 0 },
-        { name: "Back", ord: 1 },
-        { name: "Extra", ord: 2 },
+    const createdPkg = await AnkiPackage.create({
+      cards: [
+        {
+          id: "card-1",
+          type: "basic",
+          q: "Front",
+          a: "Back",
+          info: "Extra",
+          groups: ["Deck/Sub"],
+          sourceNotePath: "Deck/Sub.md",
+        },
       ],
-      tmpls: [
-        { name: "Card 1", ord: 0, qfmt: "{{Front}}", afmt: "{{FrontSide}}<hr>{{Back}}" },
-      ],
-      css: "",
-      did: 1,
-      mod: 0,
-      usn: -1,
-      sortf: 0,
-      tags: [],
-      vers: [],
-    });
-
-    ankiSqlMock.mockDecks.set(DEFAULT_DECK_ID, {
-      id: DEFAULT_DECK_ID,
-      name: "Deck::Sub",
-      mod: 0,
-      usn: -1,
-      collapsed: false,
-      browserCollapsed: false,
-      desc: "",
-      dyn: 0,
-      conf: 1,
-      extendNew: 10,
-      extendRev: 50,
-      newToday: [0, 0],
-      revToday: [0, 0],
-      lrnToday: [0, 0],
-      timeToday: [0, 0],
+      defaultDeckName: "Deck::Sub",
     });
 
     const vault = new MemoryVault();
     const plugin = makePlugin(vault);
 
-    const res = await importFromApkg(plugin, new Uint8Array([1, 2, 3]), {
+    const res = await importFromApkg(plugin, createdPkg.toBytes(), {
       targetFolder: "Anki Import",
       preserveScheduling: false,
       groupMapping: "deck-as-group",
@@ -274,8 +154,8 @@ describe("anki import/export pipelines", () => {
       includeMedia: false,
     });
 
-    expect(packApkg).toHaveBeenCalled();
-    expect(res.apkgBytes).toEqual(new Uint8Array([7, 7]));
+    expect(res.apkgBytes).toBeInstanceOf(Uint8Array);
+    expect(res.apkgBytes.length).toBeGreaterThan(100);
     expect(res.stats.notesExported).toBe(1);
     expect(res.stats.cardsExported).toBe(1);
     expect(res.stats.revlogEntries).toBe(1);

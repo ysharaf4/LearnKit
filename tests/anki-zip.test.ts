@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { packApkg, unpackApkg } from "../src/platform/integrations/anki/anki-zip";
+import { packApkg, unpackApkg } from "../src/platform/integrations/anki/anki-package";
 import { strToU8, strFromU8 } from "fflate";
 
 describe("packApkg / unpackApkg", () => {

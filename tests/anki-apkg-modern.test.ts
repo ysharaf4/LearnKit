@@ -14,8 +14,7 @@ import { describe, expect, it } from "vitest";
 import { zipSync, strToU8 } from "fflate";
 import { decompress as zstdInflate } from "fzstd";
 
-import { packApkg, unpackApkg } from "../src/platform/integrations/anki/anki-zip";
-import { describeAnkiUpgradeStub } from "../src/platform/integrations/anki/anki-import";
+import { packApkg, unpackApkg, describeAnkiUpgradeStub } from "../src/platform/integrations/anki/anki-package";
 import type { AnkiNoteRow } from "../src/platform/integrations/anki/anki-constants";
 
 const SQLITE_MAGIC = "SQLite format 3\0";

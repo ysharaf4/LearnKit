@@ -47,8 +47,8 @@ import { State as FsrsState } from "ts-fsrs";
 import { makeEl } from "../../core/dom-factory";
 
 /** Derive a human-readable title from a vault file path. */
-function titleFromFilePath(filePath: string): string {
-  const base = String(filePath ?? "").split("/").pop() || filePath;
+function titleFromFilePath(filePath?: string): string {
+  const base = String(filePath ?? "").split("/").pop() || "";
   return base.replace(/\.md$/i, "").trim();
 }
 
@@ -68,7 +68,7 @@ export function cardRecordToAnkiNote(card: CardRecord, modelId?: number): AnkiNo
   if (card.type === "cloze" || card.type === "cloze-child") {
     // Cloze: Cloze | Explanation
     mid = modelId ?? CLOZE_MODEL_ID;
-    const cloze = toHtml(card.clozeText || "");
+    const cloze = toHtml(card.clozeText || (card as { prompt?: string | null }).prompt || "");
     const explanation = toHtml(card.info || "");
     flds = [cloze, explanation].join(ANKI_FIELD_SEPARATOR);
   } else if (card.type === "mcq") {
@@ -94,8 +94,8 @@ export function cardRecordToAnkiNote(card: CardRecord, modelId?: number): AnkiNo
   } else {
     // Basic (default): Front | Back | Explanation
     mid = modelId ?? BASIC_MODEL_ID;
-    const front = toHtml(card.q || "");
-    const back = toHtml(card.a || "");
+    const front = toHtml(card.q || (card as { prompt?: string | null }).prompt || "");
+    const back = toHtml(card.a || (card as { answer?: string | null }).answer || "");
     const explanation = toHtml(card.info || "");
     flds = [front, back, explanation].join(ANKI_FIELD_SEPARATOR);
   }

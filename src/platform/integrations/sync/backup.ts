@@ -32,7 +32,7 @@ import {
   isSqliteDatabasePresent,
   readStoreDataFromSqliteBuffer,
 } from "../../core/sqlite-store";
-import { getSqlJs } from "../anki/anki-sql";
+import { getSqlJs } from "../../core/sql-wasm";
 
 const MS_HOUR = 60 * 60 * 1000;
 const MS_DAY = 24 * MS_HOUR;
