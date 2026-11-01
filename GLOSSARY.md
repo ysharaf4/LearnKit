@@ -48,4 +48,21 @@ _Avoid_: Pass, delay, postpone
 A self-contained archive (.apkg) containing an SQLite collection database and bundled media files, representing exported or imported flashcards and scheduling history.
 _Avoid_: Anki zip, deck export archive, apkg bundle
 
+**Card Reconciliation**:
+The process of diffing parsed flashcards in a note against persisted store records, identifying additions, updates, deletions, and quarantine transitions.
+_Avoid_: Store sync, card matching, card update pass
+
+**Card Anchor**:
+A persistent, deterministic block identifier (e.g., `^lk-170000000`) embedded in note markdown to link parsed text to a unique card identity across file edits and renames.
+_Avoid_: Card ID tag, block reference, anchor token
+
+**Derived Card**:
+A virtual or child flashcard generated automatically from a parent card definition (e.g. cloze deletion instances, reversed forward/back directions, image occlusion masks, combo variants).
+_Avoid_: Child record, sub-card, generated card item
+
+**Quarantined Card**:
+A card whose source syntax is malformed or whose referenced asset (e.g., occlusion image) is missing, temporarily excluded from study queues while preserving its scheduling history.
+_Avoid_: Broken card, error card, suspended syntax item
+
+
 
