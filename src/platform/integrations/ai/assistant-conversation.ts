@@ -538,7 +538,7 @@ export class AssistantConversation {
           yield { type: "done", text: accumulatedText, role: "assistant" };
           return;
         }
-        throw streamError;
+        throw streamError instanceof Error ? streamError : new Error(typeof streamError === "string" ? streamError : "Stream error");
       }
 
       const result = await completionPromise;

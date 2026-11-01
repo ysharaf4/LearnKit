@@ -272,7 +272,7 @@ export function parseCardsFromText(
       return;
     }
     const prev = card[key];
-    (card as any)[key] = (typeof prev === "string" && prev ? prev + "\n" : "") + chunk;
+    (card as Record<string, unknown>)[key] = (typeof prev === "string" && prev ? prev + "\n" : "") + chunk;
   };
 
   for (let i = 0; i < lines.length; i++) {

@@ -833,7 +833,7 @@ export function createAudioPickerField(
 ): { element: HTMLElement; hiddenInput: HTMLInputElement } {
   const doc = activeDocument;
 
-  const hiddenInput = makeEl("input", doc) as HTMLInputElement;
+  const hiddenInput = makeEl("input", doc);
   hiddenInput.type = "hidden";
   hiddenInput.value = initialValue || "";
 
@@ -859,10 +859,26 @@ export function createAudioPickerField(
     const chip = makeEl("span", doc);
     chip.className = "learnkit-audio-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-muted text-muted-foreground border border-border/50 max-w-full transition-colors";
 
-    const playBtn = makeEl("button", doc) as HTMLButtonElement;
+    const chipBtnStyles = {
+      background: "transparent",
+      border: "none",
+      boxShadow: "none",
+      padding: "0",
+      margin: "0",
+      width: "18px",
+      height: "18px",
+      minHeight: "0",
+      minWidth: "0",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+    };
+
+    const playBtn = makeEl("button", doc);
     playBtn.type = "button";
     playBtn.className = "learnkit-audio-chip-btn learnkit-btn-unstyled shrink-0 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground cursor-pointer";
-    playBtn.style.cssText = "background:transparent;border:none;box-shadow:none;padding:0;margin:0;width:18px;height:18px;min-height:0;min-width:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;";
+    setCssProps(playBtn, chipBtnStyles);
     playBtn.setAttribute("aria-label", "Play preview");
     playBtn.title = "Play preview";
     setIcon(playBtn, "volume-2");
@@ -872,10 +888,10 @@ export function createAudioPickerField(
     name.textContent = audioRefBasename(ref);
     name.title = `${ref} (click to preview)`;
 
-    const removeBtn = makeEl("button", doc) as HTMLButtonElement;
+    const removeBtn = makeEl("button", doc);
     removeBtn.type = "button";
     removeBtn.className = "learnkit-audio-chip-remove learnkit-btn-unstyled shrink-0 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive ml-0.5 cursor-pointer";
-    removeBtn.style.cssText = "background:transparent;border:none;box-shadow:none;padding:0;margin:0;width:18px;height:18px;min-height:0;min-width:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;";
+    setCssProps(removeBtn, chipBtnStyles);
     removeBtn.setAttribute("aria-label", "Remove audio");
     removeBtn.title = "Remove audio";
     setIcon(removeBtn, "x");
@@ -981,7 +997,7 @@ export function createAudioPickerField(
     chipRow.appendChild(chip);
   };
 
-  chooseBtn = makeEl("button", doc) as HTMLButtonElement;
+  chooseBtn = makeEl("button", doc);
   chooseBtn.type = "button";
   chooseBtn.className = "learnkit-btn-toolbar h-7 px-2 text-sm inline-flex items-center justify-center gap-1";
   const btnIcon = makeEl("span", doc);

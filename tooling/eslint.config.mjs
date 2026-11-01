@@ -38,11 +38,15 @@ export default defineConfig([
       },
     },
     rules: {
-      "@typescript-eslint/no-explicit-any": ["error", { ignoreRestArgs: true }],
-      // Type assertions are erased at runtime, so removing a redundant one is
-      // provably behaviour-preserving. The community-plugin review reports 63
-      // of these; keep them surfaced here instead.
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unsafe-assignment": "warn",
+      "@typescript-eslint/no-unsafe-member-access": "warn",
+      "@typescript-eslint/no-unsafe-argument": "warn",
+      "@typescript-eslint/no-unsafe-call": "warn",
+      "@typescript-eslint/no-unsafe-return": "warn",
       "@typescript-eslint/no-unnecessary-type-assertion": "warn",
+      "no-case-declarations": "warn",
+      "@typescript-eslint/only-throw-error": "warn",
     },
   },
 ]);

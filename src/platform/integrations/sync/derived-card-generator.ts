@@ -315,10 +315,10 @@ export class DerivedCardGenerator {
     options: DerivedCardGenerationOptions,
   ): CardRecord[] {
     const parentId = String(parent.id);
-    const ext = (parent.extensionData ?? {}) as Record<string, unknown>;
+    const ext = (parent.extensionData ?? {});
     let qVariants: string[] = Array.isArray(ext.qVariants) ? (ext.qVariants as string[]) : [];
     let aVariants: string[] = Array.isArray(ext.aVariants) ? (ext.aVariants as string[]) : [];
-    const comboMode = String(ext.comboMode || parent.comboMode || "product");
+    const comboMode = typeof ext.comboMode === "string" ? ext.comboMode : typeof parent.comboMode === "string" ? parent.comboMode : "product";
 
     if (qVariants.length <= 1 && aVariants.length <= 1) {
       const qRaw = String(parent.q ?? "").trim();

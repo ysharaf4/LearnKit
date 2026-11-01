@@ -26,6 +26,9 @@ Enforce these mechanical standards across all edits:
 4. **Localization**: Never hardcode user-facing strings. Use `t(locale, "token.key", "Fallback")` or `t("token.key", "Fallback")`. Every new token in `en-base.json` must be added to `zh-cn.json`. Verify with `npm run translations:check`.
 5. **Stylesheets**: Never write `!important` declarations in CSS. Route backdrop blur values through the LearnKit design tokens (`var(--lk-backdrop-blur)`).
 6. **Terminology**: Adhere to [`GLOSSARY.md`](file:///Users/ysharaf/LearnKit/GLOSSARY.md). Use domain terms (_Study Session_, _Card_, _Scope_, _Rating_, _Bury_, _Suspend_).
+7. **DOM Testing Environment**: Every Vitest test file interacting with DOM nodes, `window`, or `HTMLMediaElement` must specify `// @vitest-environment jsdom` as its very first line.
+8. **Obsidian Test Mocks**: When mocking vault files, instantiate with `Object.assign(new TFile(), ...)` from [`tests/__mocks__/obsidian.ts`](file:///Users/ysharaf/LearnKit/tests/__mocks__/obsidian.ts) so runtime `instanceof TFile` guards resolve to `true`.
+9. **Single-Pass State Restoration**: Restoring temporary element attributes (e.g., `data-original-label` or class names) must run in a single deduplicated pass to prevent cascading fallback overwrites.
 
 ## Verification Loop
 
