@@ -159,8 +159,12 @@ export class LearnKitReviewerView extends ItemView {
 
   /** Restore keyboard focus after render() rebuilds the DOM. */
   private _restoreFocus() {
+    if (this.mode === "session" && this.session) {
+      this.containerEl.focus({ preventScroll: true });
+      return;
+    }
     const first = this.contentEl.querySelector<HTMLElement>(
-      'button:not([disabled]), [tabindex="0"]',
+      'button:not([disabled]):not([tabindex="-1"]), [tabindex="0"]',
     );
     if (first) first.focus({ preventScroll: true });
     else this.containerEl.focus({ preventScroll: true });

@@ -85,6 +85,14 @@ describe("shouldDeferSpaceToNativeControl", () => {
     ).toBe(false);
   });
 
+  it("never defers Space when focus sits inside the timer controls", () => {
+    const insideTimer = {
+      closest: (sel: string) =>
+        sel.includes("learnkit-timer-capsule") || sel.includes("learnkit-timer-toggle-btn") ? {} : null,
+    };
+    expect(shouldDeferSpaceToNativeControl({ key: " " }, insideTimer)).toBe(false);
+  });
+
   it("covers the interactive roles the reviewer renders", () => {
     for (const sel of ["button", "[role='checkbox']", "[role='radio']", "a[href]", "summary"]) {
       expect(NATIVE_ACTIVATION_SELECTOR).toContain(sel);

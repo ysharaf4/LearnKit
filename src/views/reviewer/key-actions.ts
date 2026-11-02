@@ -114,6 +114,14 @@ export function shouldDeferSpaceToNativeControl(
   if (!isSpaceKey(ev)) return false;
   if (!target || typeof target.closest !== "function") return false;
   try {
+    // Never defer Space if target is inside timer controls
+    if (
+      target.closest(
+        "[data-study-session-timer-row], .learnkit-timer-capsule, .lk-review-title-timer-host, .lk-session-timer-group, .learnkit-timer-toggle-btn",
+      )
+    ) {
+      return false;
+    }
     return !!target.closest(NATIVE_ACTIVATION_SELECTOR);
   } catch {
     return false;

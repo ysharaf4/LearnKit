@@ -105,13 +105,24 @@ describe("Reviewer Card Reveal", () => {
     const revealBtn = buttons.find((b) => b.textContent?.includes("Reveal Answer"));
     expect(revealBtn).toBeUndefined();
 
-    // Should render Again, Good, etc.
+    // Should render Again, Good, etc. inside grade group
+    const gradeGroup = container.querySelector(".learnkit-session-study-dock-grade-group");
+    expect(gradeGroup).not.toBeNull();
+
     const againBtn = container.querySelector(".learnkit-btn-again");
     expect(againBtn).not.toBeNull();
+    expect(gradeGroup?.contains(againBtn)).toBe(true);
 
-    // The answer text block should be rendered
+    // The QA divider and answer text block should be rendered
+    const qaDivider = container.querySelector(".learnkit-qa-divider");
+    expect(qaDivider).not.toBeNull();
+
     const answerBlock = container.querySelector(".learnkit-a");
     expect(answerBlock).not.toBeNull();
+
+    // The deck badge icon should be rendered
+    const deckIcon = container.querySelector(".learnkit-deck-icon");
+    expect(deckIcon).not.toBeNull();
   });
 
   it("renders animated waves on replay button when card is revealed while audio is playing", async () => {

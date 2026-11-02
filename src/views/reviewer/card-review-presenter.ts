@@ -333,11 +333,20 @@ export function makeHeaderMenu(opts: {
   root.appendChild(trigger);
 
   const popover = makeEl("div");
-  popover.id = `${id}-menu`;
-  popover.className = "popover learnkit-session-more-popover hidden";
-  popover.setAttribute("role", "menu");
-  popover.setAttribute("aria-labelledby", `${id}-trigger`);
-  popover.tabIndex = -1;
+  popover.id = `${id}-popover`;
+  popover.className = "learnkit learnkit-popover-overlay";
+  popover.setAttribute("aria-hidden", "true");
+
+  const panel = makeEl("div");
+  panel.className =
+    "learnkit rounded-md border border-border bg-popover text-popover-foreground shadow-lg p-1 pointer-events-auto learnkit-header-menu-panel learnkit-session-more-popover flex flex-col";
+  popover.appendChild(panel);
+
+  const menu = makeEl("div");
+  menu.className = "learnkit flex flex-col";
+  menu.setAttribute("role", "menu");
+  menu.id = `${id}-menu`;
+  panel.appendChild(menu);
 
   const mkItem = (
     label: string,
@@ -345,25 +354,44 @@ export function makeHeaderMenu(opts: {
     onSelect: () => void,
     kbd?: string,
     actionKey?: string,
+    iconName?: string,
   ): HTMLButtonElement => {
     const item = makeEl("button");
     item.type = "button";
-    item.className = "menu-item flex items-center justify-between";
+    item.className =
+      "group learnkit-session-more-item flex items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-sm cursor-pointer select-none outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground menu-item";
     if (actionKey) item.dataset.bcAction = actionKey;
     item.setAttribute("role", "menuitem");
+    item.tabIndex = enabled ? 0 : -1;
 
     if (!enabled) {
       item.setAttribute("aria-disabled", "true");
       item.classList.add("is-disabled", "learnkit-menu-item--disabled");
+      item.disabled = true;
+    }
+
+    const leftWrap = makeEl("span");
+    leftWrap.className = "flex items-center gap-2 min-w-0";
+
+    if (iconName) {
+      const iconWrap = makeEl("span");
+      iconWrap.className = "inline-flex items-center justify-center opacity-70 shrink-0 learnkit-menu-item-icon";
+      setIcon(iconWrap, iconName);
+      queryFirst(iconWrap, "svg")?.setAttribute("width", "14");
+      queryFirst(iconWrap, "svg")?.setAttribute("height", "14");
+      leftWrap.appendChild(iconWrap);
     }
 
     const span = makeEl("span");
+    span.className = "truncate";
     span.textContent = label;
-    item.appendChild(span);
+    leftWrap.appendChild(span);
+
+    item.appendChild(leftWrap);
 
     if (kbd) {
       const k = makeKbd(kbd);
-      k.classList.add("ml-auto");
+      k.className = "kbd ml-auto text-xs text-muted-foreground tracking-widest shrink-0";
       item.appendChild(k);
     }
 
@@ -375,65 +403,61 @@ export function makeHeaderMenu(opts: {
       onSelect();
     });
 
+    item.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!enabled) return;
+        closePopover();
+        onSelect();
+      }
+    });
+
     return item;
   };
 
-  const closePopover = (): void => {
-    popover.classList.add("hidden");
-    trigger.setAttribute("aria-expanded", "false");
-    document.removeEventListener("pointerdown", onDocPointerDown, true);
-    document.removeEventListener("keydown", onDocKeyDown, true);
-  };
+  const place = (): void => {
+    const r = trigger.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const margin = 8;
+    const width = Math.max(220, Math.round(panelRect.width || 0));
 
-  const openPopover = (): void => {
-    if (!popover.classList.contains("hidden")) {
-      closePopover();
-      return;
+    let left: number;
+    if (r.left + width > window.innerWidth - margin && r.right - width >= margin) {
+      left = r.right - width;
+    } else {
+      left = r.left;
     }
 
-    while (popover.firstChild) {
-      popover.removeChild(popover.firstChild);
+    if (left + width > window.innerWidth - margin) {
+      left = Math.max(margin, window.innerWidth - width - margin);
+    }
+    if (left < margin) {
+      left = margin;
     }
 
-    const undoItem = mkItem(tx("ui.widget.undo", "Undo"), opts.canUndo, opts.onUndo, "Z", "reviewer-menu-undo");
-    const skipItem = mkItem(tx("ui.widget.skip", "Skip"), opts.canSkip, opts.onSkip, "S", "reviewer-menu-skip");
-    const buryItem = mkItem(tx("ui.reviewer.action.bury", "Bury"), opts.canBurySuspend, opts.onBury, "B", "reviewer-menu-bury");
-    const suspendItem = mkItem(tx("ui.reviewer.action.suspend", "Suspend"), opts.canBurySuspend, opts.onSuspend, "U", "reviewer-menu-suspend");
-    const exitItem = mkItem(tx("ui.reviewer.more.action.exitSession", "Return to decks"), true, opts.onExit, "Q", "reviewer-menu-exit");
+    const height = Math.max(1, panelRect.height);
+    const spaceAbove = r.top;
+    const spaceBelow = window.innerHeight - r.bottom;
+    const dropUp = spaceAbove >= height + margin || spaceAbove >= spaceBelow;
 
-    popover.appendChild(undoItem);
-    popover.appendChild(skipItem);
-    popover.appendChild(buryItem);
-    popover.appendChild(suspendItem);
+    const top = dropUp
+      ? Math.max(margin, r.top - height - 6)
+      : Math.min(window.innerHeight - height - margin, r.bottom + 6);
 
-    if (opts.onReplayAudio) {
-      const replayAudioItem = mkItem(
-        tx("ui.reviewer.tts.readAloud", "Replay audio"),
-        opts.canReplayAudio !== false,
-        opts.onReplayAudio,
-        "R",
-        "reviewer-menu-replay-audio",
-      );
-      popover.appendChild(replayAudioItem);
-    }
-
-    popover.appendChild(exitItem);
-
-    popover.classList.remove("hidden");
-    trigger.setAttribute("aria-expanded", "true");
-
-    const rect = trigger.getBoundingClientRect();
     setCssProps(popover, {
       position: "fixed",
-      top: `${rect.bottom + 4}px`,
-      right: `${document.documentElement.clientWidth - rect.right}px`,
-      left: "auto",
-      zIndex: "var(--layer-popover, 50)",
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      "--learnkit-popover-left": `${left}px`,
+      "--learnkit-popover-top": `${top}px`,
+      "--learnkit-popover-width": `${width}px`,
+      zIndex: "var(--lk-z-popover-overlay, 999999)",
     });
-
-    document.addEventListener("pointerdown", onDocPointerDown, true);
-    document.addEventListener("keydown", onDocKeyDown, true);
   };
+
+  const getDoc = () => (typeof activeDocument !== "undefined" ? activeDocument : document);
 
   const onDocPointerDown = (e: PointerEvent): void => {
     const t = e.target as Node | null;
@@ -444,18 +468,113 @@ export function makeHeaderMenu(opts: {
   const onDocKeyDown = (e: KeyboardEvent): void => {
     if (e.key === "Escape") {
       e.preventDefault();
+      e.stopPropagation();
       closePopover();
+      trigger.focus();
     }
   };
 
-  trigger.addEventListener("pointerdown", (e) => {
+  const onResizeOrScroll = (): void => {
+    if (popover.classList.contains("is-open")) {
+      place();
+    }
+  };
+
+  const closePopover = (): void => {
+    popover.setAttribute("aria-hidden", "true");
+    popover.classList.remove("is-open");
+    trigger.setAttribute("aria-expanded", "false");
+
+    const doc = getDoc();
+    doc.removeEventListener("pointerdown", onDocPointerDown, true);
+    doc.removeEventListener("keydown", onDocKeyDown, true);
+    window.removeEventListener("resize", onResizeOrScroll, true);
+    window.removeEventListener("scroll", onResizeOrScroll, true);
+
+    try {
+      popover.remove();
+    } catch (e) {
+      log.swallow("makeHeaderMenu popover.remove", e);
+    }
+  };
+
+  const openPopover = (): void => {
+    if (popover.classList.contains("is-open")) {
+      closePopover();
+      return;
+    }
+
+    while (menu.firstChild) {
+      menu.removeChild(menu.firstChild);
+    }
+
+    const undoItem = mkItem(tx("ui.widget.undo", "Undo"), opts.canUndo, opts.onUndo, "Z", "reviewer-menu-undo", "rotate-ccw");
+    const skipItem = mkItem(tx("ui.widget.skip", "Skip"), opts.canSkip, opts.onSkip, "S", "reviewer-menu-skip", "skip-forward");
+    const buryItem = mkItem(tx("ui.reviewer.action.bury", "Bury"), opts.canBurySuspend, opts.onBury, "B", "reviewer-menu-bury", "archive");
+    const suspendItem = mkItem(tx("ui.reviewer.action.suspend", "Suspend"), opts.canBurySuspend, opts.onSuspend, "U", "reviewer-menu-suspend", "pause-circle");
+
+    menu.appendChild(undoItem);
+    menu.appendChild(skipItem);
+    menu.appendChild(buryItem);
+    menu.appendChild(suspendItem);
+
+    if (opts.onReplayAudio) {
+      const replayAudioItem = mkItem(
+        tx("ui.reviewer.tts.readAloud", "Replay audio"),
+        opts.canReplayAudio !== false,
+        opts.onReplayAudio,
+        "R",
+        "reviewer-menu-replay-audio",
+        "volume-2",
+      );
+      menu.appendChild(replayAudioItem);
+    }
+
+    const separator = makeEl("hr");
+    separator.className = "learnkit-menu-separator my-1 border-t border-border/40";
+    menu.appendChild(separator);
+
+    const exitItem = mkItem(tx("ui.reviewer.more.action.exitSession", "Return to decks"), true, opts.onExit, "Q", "reviewer-menu-exit", "log-out");
+    menu.appendChild(exitItem);
+
+    const doc = getDoc();
+    doc.body.appendChild(popover);
+    popover.setAttribute("aria-hidden", "false");
+    popover.classList.add("is-open");
+    trigger.setAttribute("aria-expanded", "true");
+
+    place();
+    window.requestAnimationFrame(() => place());
+
+    doc.addEventListener("pointerdown", onDocPointerDown, true);
+    doc.addEventListener("keydown", onDocKeyDown, true);
+    window.addEventListener("resize", onResizeOrScroll, true);
+    window.addEventListener("scroll", onResizeOrScroll, true);
+  };
+
+  trigger.addEventListener("pointerdown", (e: PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    openPopover();
+    if (popover.classList.contains("is-open")) {
+      closePopover();
+    } else {
+      openPopover();
+    }
   });
 
-  document.body.appendChild(popover);
+  trigger.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (popover.classList.contains("is-open")) {
+        closePopover();
+      } else {
+        openPopover();
+      }
+    }
+  });
+
   return root;
 }
 
@@ -842,10 +961,8 @@ export class CardReviewPresenter {
       clearInterval(this.countdownTimer);
       this.countdownTimer = null;
     }
-    const popover = document.querySelector(".learnkit-session-more-popover");
-    if (popover) {
-      popover.remove();
-    }
+    const popovers = document.querySelectorAll(".learnkit-popover-overlay, .learnkit-session-more-popover");
+    popovers.forEach((p) => p.remove());
   }
 
   // ── Rendering Implementation ───────────────────────────────────────────────
@@ -917,16 +1034,31 @@ export class CardReviewPresenter {
     const TYPE_LABELS = new Set(["basic", "basic (reversed)", "cloze", "multiple choice", "image occlusion", "ordered question", "flashcard"]);
     if (TYPE_LABELS.has(displayTitle.toLowerCase())) displayTitle = "";
 
-    const titleText = displayTitle || fallbackQuestionTitle(this.session, card);
+    const titleText = (displayTitle || fallbackQuestionTitle(this.session, card) || "").trim();
+    if (!titleText) {
+      header.classList.add("learnkit-session-topbar-hidden");
+    }
+
     const titleWrap = makeEl("div");
     titleWrap.className = "learnkit-session-topbar-title learnkit-question-title";
     header.appendChild(titleWrap);
 
+    const deckIcon = makeEl("span");
+    deckIcon.className = "learnkit-deck-icon inline-flex items-center justify-center opacity-70 shrink-0";
+    setIcon(deckIcon, "folder");
+    queryFirst(deckIcon, "svg")?.setAttribute("width", "13");
+    queryFirst(deckIcon, "svg")?.setAttribute("height", "13");
+    titleWrap.appendChild(deckIcon);
+
+    const titleTextSpan = makeEl("span");
+    titleTextSpan.className = "truncate learnkit-deck-title-text";
+    titleWrap.appendChild(titleTextSpan);
+
     const titleMd = String(titleText ?? "");
     if (titleMd.includes("[[") || titleMd.includes("$")) {
-      void this.renderMarkdown(titleWrap, titleMd, sourcePath);
+      void this.renderMarkdown(titleTextSpan, titleMd, sourcePath);
     } else {
-      applyInlineMarkdownWithFlags(titleWrap, titleMd);
+      applyInlineMarkdownWithFlags(titleTextSpan, titleMd);
     }
 
     // Card Content Section
@@ -1099,6 +1231,10 @@ export class CardReviewPresenter {
       section.appendChild(renderMdBlock("learnkit-q", convertInlineDisplayMath(frontContent)));
 
       if (this.showAnswer) {
+        const qaDivider = makeEl("hr");
+        qaDivider.className = "learnkit-qa-divider";
+        section.appendChild(qaDivider);
+
         section.appendChild(labelRow(tx("ui.common.answer", "Answer")));
         section.appendChild(renderMdBlock("learnkit-a", convertInlineDisplayMath(backContent)));
       }
@@ -1143,6 +1279,10 @@ export class CardReviewPresenter {
       section.appendChild(renderMdBlock("learnkit-q", convertInlineDisplayMath(card.q || "")));
 
       if (this.showAnswer) {
+        const qaDivider = makeEl("hr");
+        qaDivider.className = "learnkit-qa-divider";
+        section.appendChild(qaDivider);
+
         section.appendChild(labelRow(tx("ui.common.answer", "Answer")));
         section.appendChild(renderMdBlock("learnkit-a", convertInlineDisplayMath(card.a || "")));
       }
@@ -1152,7 +1292,7 @@ export class CardReviewPresenter {
     if (this.showAnswer) {
       const info = extractInfoField(card);
       if (info) {
-        const infoEl = renderMdBlock("learnkit-info p-3 rounded-lg border text-sm text-muted-foreground", info);
+        const infoEl = renderMdBlock("learnkit-info whitespace-pre-wrap break-words", info);
         section.appendChild(infoEl);
       }
     }
@@ -1306,13 +1446,17 @@ export class CardReviewPresenter {
       center.appendChild(continueBtn);
     } else {
       // Rating buttons: Again, Hard, Good, Easy
+      const gradeGroup = makeEl("div");
+      gradeGroup.className = "learnkit-session-study-dock-grade-group";
+      center.appendChild(gradeGroup);
+
       const againBtn = makeTextButton({
         label: tx("ui.widget.grade.again", "Again"),
         className: "btn-destructive learnkit-btn-again",
         onClick: () => void this.gradeCurrentRating("again"),
         kbd: "1",
       });
-      center.appendChild(againBtn);
+      gradeGroup.appendChild(againBtn);
 
       if (four) {
         const hardBtn = makeTextButton({
@@ -1321,7 +1465,7 @@ export class CardReviewPresenter {
           onClick: () => void this.gradeCurrentRating("hard"),
           kbd: "2",
         });
-        center.appendChild(hardBtn);
+        gradeGroup.appendChild(hardBtn);
 
         const goodBtn = makeTextButton({
           label: tx("ui.widget.grade.good", "Good"),
@@ -1329,7 +1473,7 @@ export class CardReviewPresenter {
           onClick: () => void this.gradeCurrentRating("good"),
           kbd: "3",
         });
-        center.appendChild(goodBtn);
+        gradeGroup.appendChild(goodBtn);
 
         const easyBtn = makeTextButton({
           label: tx("ui.widget.grade.easy", "Easy"),
@@ -1337,7 +1481,7 @@ export class CardReviewPresenter {
           onClick: () => void this.gradeCurrentRating("easy"),
           kbd: "4",
         });
-        center.appendChild(easyBtn);
+        gradeGroup.appendChild(easyBtn);
       } else {
         const goodBtn = makeTextButton({
           label: tx("ui.widget.grade.good", "Good"),
@@ -1345,7 +1489,7 @@ export class CardReviewPresenter {
           onClick: () => void this.gradeCurrentRating("good"),
           kbd: "2",
         });
-        center.appendChild(goodBtn);
+        gradeGroup.appendChild(goodBtn);
       }
     }
 
