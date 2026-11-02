@@ -192,10 +192,20 @@ function makeTextButton(opts: {
   onClick: (e: MouseEvent) => void;
   kbd?: string;
   title?: string;
+  icon?: string;
 }): HTMLButtonElement {
   const btn = makeEl("button");
   btn.type = "button";
   btn.className = `bc ${opts.className || "learnkit-btn-toolbar"}`;
+
+  if (opts.icon) {
+    const iconSpan = makeEl("span");
+    iconSpan.className = "learnkit-btn-icon inline-flex items-center justify-center shrink-0";
+    setIcon(iconSpan, opts.icon);
+    queryFirst(iconSpan, "svg")?.setAttribute("width", "14");
+    queryFirst(iconSpan, "svg")?.setAttribute("height", "14");
+    btn.appendChild(iconSpan);
+  }
 
   const hasSubtitle = typeof opts.subtitle === "string" && opts.subtitle.trim().length > 0;
   if (hasSubtitle) {
@@ -215,7 +225,10 @@ function makeTextButton(opts: {
 
     btn.appendChild(stack);
   } else {
-    btn.textContent = opts.label;
+    const labelSpan = makeEl("span");
+    labelSpan.className = "learnkit-btn-label-text";
+    labelSpan.textContent = opts.label;
+    btn.appendChild(labelSpan);
   }
 
   if (opts.kbd) appendKbdRight(btn, opts.kbd);
@@ -324,7 +337,9 @@ export function makeHeaderMenu(opts: {
     trigger.classList.add("lk-review-more-icon-btn");
     const iconWrap = makeEl("span");
     iconWrap.className = "inline-flex items-center justify-center";
-    setIcon(iconWrap, "menu");
+    setIcon(iconWrap, "more-horizontal");
+    queryFirst(iconWrap, "svg")?.setAttribute("width", "16");
+    queryFirst(iconWrap, "svg")?.setAttribute("height", "16");
     trigger.appendChild(iconWrap);
   } else {
     trigger.textContent = tx("ui.reviewer.more.title", "More");
@@ -1404,28 +1419,12 @@ export class CardReviewPresenter {
     // Left controls: Back to Decks
     const backBtn = makeTextButton({
       label: tx("ui.reviewer.session.returnToDecks", "Decks"),
-      className: "learnkit-btn-toolbar",
+      className: "learnkit-btn-toolbar learnkit-btn-back",
       onClick: () => this.options.onBackToDecks?.(),
       kbd: "Q",
+      icon: "arrow-left",
     });
     left.appendChild(backBtn);
-
-    // Header More-Menu
-    const menuRoot = makeHeaderMenu({
-      interfaceLanguage: this.options.interfaceLanguage,
-      canUndo: this.session instanceof StudySession ? this.session.canUndo : false,
-      onUndo: () => void this.undoLast(),
-      canSkip: !!this.options.enableSkipButton,
-      onSkip: () => this.skipCurrentCard(),
-      canBurySuspend: !isPractice,
-      onBury: () => void this.buryCurrentCard(),
-      onSuspend: () => void this.suspendCurrentCard(),
-      onExit: () => this.options.onBackToDecks?.(),
-      canReplayAudio: !!card.audioRef,
-      onReplayAudio: () => this.speakCard(card, this.showAnswer ? "back" : "front"),
-      compactTrigger: true,
-    });
-    left.appendChild(menuRoot);
 
     // Center controls: Reveal Answer or Rating Buttons
     if (!this.showAnswer) {
@@ -1493,7 +1492,7 @@ export class CardReviewPresenter {
       }
     }
 
-    // Right controls: Skip or Edit Card
+    // Right controls: Skip, Edit Card, More Menu
     if (this.options.enableSkipButton) {
       const skipBtn = makeTextButton({
         label: tx("ui.widget.skip", "Skip"),
@@ -1507,14 +1506,33 @@ export class CardReviewPresenter {
     if (this.options.onEditCard) {
       const editBtn = makeEl("button");
       editBtn.type = "button";
-      editBtn.className = "btn-icon";
+      editBtn.className = "btn-icon lk-review-edit-icon-btn";
       editBtn.setAttribute("aria-label", tx("ui.reviewer.cardEditor.title", "Edit Card"));
       const icon = makeEl("span");
       setIcon(icon, "pencil");
+      queryFirst(icon, "svg")?.setAttribute("width", "15");
+      queryFirst(icon, "svg")?.setAttribute("height", "15");
       editBtn.appendChild(icon);
       editBtn.addEventListener("click", () => this.options.onEditCard?.(card));
       right.appendChild(editBtn);
     }
+
+    // Header More-Menu
+    const menuRoot = makeHeaderMenu({
+      interfaceLanguage: this.options.interfaceLanguage,
+      canUndo: this.session instanceof StudySession ? this.session.canUndo : false,
+      onUndo: () => void this.undoLast(),
+      canSkip: !!this.options.enableSkipButton,
+      onSkip: () => this.skipCurrentCard(),
+      canBurySuspend: !isPractice,
+      onBury: () => void this.buryCurrentCard(),
+      onSuspend: () => void this.suspendCurrentCard(),
+      onExit: () => this.options.onBackToDecks?.(),
+      canReplayAudio: !!card.audioRef,
+      onReplayAudio: () => this.speakCard(card, this.showAnswer ? "back" : "front"),
+      compactTrigger: true,
+    });
+    right.appendChild(menuRoot);
   }
 
   private async renderMarkdown(container: HTMLElement, md: string, sourcePath: string): Promise<void> {
