@@ -52,11 +52,11 @@
   --lk-z-max-minus-1: 2147483646;
   --lk-z-max: 2147483647;
 
-  --lk-z-analytics-card-open: 1000000;
-  --lk-z-analytics-popover: 1000001;
-  --lk-z-analytics-row-open: 1000002;
-  --lk-z-analytics-info: 1000003;
-  --lk-z-analytics-info-hover: 1000004;
+  --lk-z-analytics-info: 1000001;
+  --lk-z-analytics-info-hover: 1000002;
+  --lk-z-analytics-card-open: 1000003;
+  --lk-z-analytics-row-open: 1000004;
+  --lk-z-analytics-popover: 1000010;
 }
 
 body {

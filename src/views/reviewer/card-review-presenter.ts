@@ -1582,7 +1582,7 @@ export class CardReviewPresenter {
 // Compatibility Adapter (renderSessionMode)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function renderSessionMode(args: unknown): void {
+export function renderSessionMode(args: any): void {
   const presenter = new CardReviewPresenter({
     container: args.container,
     session: args.session,

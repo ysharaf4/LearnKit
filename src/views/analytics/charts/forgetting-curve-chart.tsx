@@ -38,7 +38,7 @@
 import {  } from "obsidian";
 
 import * as React from "react";
-import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Line, LineChart, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { generatorParameters, forgetting_curve } from "ts-fsrs";
 import type { CardRecord, CardState, ReviewLogEntry } from "../../../platform/core/store";
 import type { ReviewResult } from "../../../platform/types/review";
@@ -93,6 +93,12 @@ const LINE_COLORS = [
   "var(--theme-accent)",
 ];
 
+const LINE_PATTERNS: Array<string | undefined> = [
+  undefined, // solid
+  "6 4",     // dashed
+  "2 3",     // dotted
+];
+
 function createEmptySearch(): SearchState {
   return { query: "", error: null };
 }
@@ -100,15 +106,20 @@ function createEmptySearch(): SearchState {
 type CurveMeta = {
   id: string;
   label: string;
+  fullQuestion: string;
   color: string;
+  strokeDasharray?: string;
   stabilityDays: number;
   lastReviewAt: number;
   firstReviewAt: number;
   horizon: number;
   timeline: Array<{ at: number; stability: number }>;
   title?: string | null;
+  location?: string | null;
   currentRetrievability?: number | null;
   elapsedDays?: number | null;
+  dueDay?: number | null;
+  dueStatus?: string | null;
 };
 
 type CurveIssue = {
@@ -178,6 +189,37 @@ function formatCardLabel(id: string) {
   return digits ?? id;
 }
 
+function cleanCardText(raw: unknown): string {
+  if (!raw) return "";
+  let s = String(raw).trim();
+  s = s.replace(/\*{2,}/g, "").replace(/\*/g, "");
+  s = s.replace(/(?<!\w)_|_(?!\w)/g, "");
+  s = s.replace(/==/g, "").replace(/~~/g, "");
+  s = s.replace(/`+/g, "");
+  s = s.replace(/\{\{c\d+::/gi, "").replace(/\}\}/g, "");
+  s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2").replace(/\[\[([^\]]+)\]\]/g, "$1");
+  return s.replace(/\s+/g, " ").trim();
+}
+
+function getCardDisplayLabel(card?: CardRecord | null, id?: string, maxChars = 28): string {
+  if (card) {
+    const text = card.q ?? card.stem ?? card.clozeText ?? card.prompt ?? card.title ?? "";
+    const cleaned = cleanCardText(text);
+    if (cleaned) {
+      return cleaned.length <= maxChars ? cleaned : `${cleaned.slice(0, maxChars - 1)}…`;
+    }
+    if (card.title?.trim()) {
+      const t = cleanCardText(card.title);
+      return t.length <= maxChars ? t : `${t.slice(0, maxChars - 1)}…`;
+    }
+  }
+  if (id) {
+    const digits = extractNineDigitId(id);
+    return digits ? `#${digits}` : id;
+  }
+  return "Card";
+}
+
 function normalizeSearchText(raw: string) {
   return String(raw ?? "")
     .trim()
@@ -202,7 +244,7 @@ function getQuestionPreview(card: CardRecord, maxChars = 48) {
     card.clozeText ??
     card.prompt ??
     "";
-  const cleaned = String(raw ?? "").replace(/\s+/g, " ").trim();
+  const cleaned = cleanCardText(raw);
   if (cleaned.length <= maxChars) return cleaned;
   return `${cleaned.slice(0, maxChars - 1)}…`;
 }
@@ -266,7 +308,10 @@ function CardCurveTooltip(props: {
   payload?: Array<{ value?: number; name?: string; dataKey?: string; color?: string }>;
   label?: number;
   baseStart: number;
+  curveMetaMap?: Map<string, CurveMeta>;
+  requestRetention?: number;
   locale?: string;
+  tx: (token: string, fallback: string, vars?: Record<string, string | number>) => string;
 }) {
   if (!props.active || !props.payload?.length) return null;
   const dayIndex = typeof props.label === "number" ? props.label : 0;
@@ -276,21 +321,55 @@ function CardCurveTooltip(props: {
     day: "numeric",
   });
   return (
-    <div className="learnkit-data-tooltip-surface">
-      <div className="text-sm font-medium text-background">{date}</div>
-      {props.payload.map((entry) => {
-        const value = Number(entry?.value ?? 0);
-        const idLabel = String(entry?.name ?? entry?.dataKey ?? "");
-        return (
-          <div key={entry.dataKey} className="flex items-center gap-2">
-            <span
-              className={`inline-block size-2 rounded-full learnkit-ana-legend-dot ${cssClassForProps({ "--learnkit-legend-color": entry.color })}`}
-            />
-            <span className="text-background">{idLabel}</span>
-            <span className="text-background">{Math.round(value * 100)}%</span>
-          </div>
-        );
-      })}
+    <div className="learnkit-data-tooltip-surface p-2.5 max-w-xs shadow-md rounded border border-border/40">
+      <div className="text-xs font-semibold text-background mb-1.5 flex items-center justify-between">
+        <span>{date}</span>
+        {typeof props.requestRetention === "number" ? (
+          <span className="text-[10px] font-normal text-background/70">
+            {props.tx("ui.analytics.forgettingCurve.due", "Due")}: {Math.round(props.requestRetention * 100)}%
+          </span>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-2">
+        {props.payload.map((entry) => {
+          const cardId = String(entry?.dataKey ?? "");
+          const meta = props.curveMetaMap?.get(cardId);
+          const value = Number(entry?.value ?? 0);
+          const label = meta?.label ?? String(entry?.name ?? cardId);
+          const dueStatus = meta?.dueStatus;
+          const dash = meta?.strokeDasharray;
+
+          return (
+            <div key={cardId} className="flex flex-col gap-0.5 border-t border-background/15 pt-1.5 first:border-0 first:pt-0">
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <svg width="14" height="6" className="shrink-0" aria-hidden="true">
+                    <line
+                      x1="0"
+                      y1="3"
+                      x2="14"
+                      y2="3"
+                      stroke={entry.color}
+                      strokeWidth="2.5"
+                      strokeDasharray={dash}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className="font-medium text-background truncate max-w-[150px]" title={meta?.fullQuestion || label}>
+                    {label}
+                  </span>
+                </div>
+                <span className="font-bold text-background shrink-0">{Math.round(value * 100)}%</span>
+              </div>
+              {dueStatus ? (
+                <div className="text-[10px] text-background/75 pl-5">
+                  {dueStatus}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -376,18 +455,73 @@ export function ForgettingCurveChart(props: {
     }
   }, [reviewLog, selectedIds.length, cardById]);
 
+  const applyPreset = React.useCallback(
+    (preset: "recent" | "hardest" | "dueSoon") => {
+      setSearch((prev) => ({ ...prev, error: null }));
+      if (preset === "recent") {
+        const lastById = new Map<string, number>();
+        for (const entry of reviewLog) {
+          if (!entry || !entry.at) continue;
+          const id = String(entry.id ?? "");
+          if (!id) continue;
+          const at = Number(entry.at);
+          if (!Number.isFinite(at)) continue;
+          const prev = lastById.get(id) ?? 0;
+          if (at > prev) lastById.set(id, at);
+        }
+        const top = Array.from(lastById.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, MAX_SELECTIONS)
+          .map(([id]) => id)
+          .filter((id) => cardById.has(id));
+        if (top.length) setSelectedIds(top);
+      } else if (preset === "hardest") {
+        const candidates: Array<{ id: string; stability: number; lapses: number }> = [];
+        for (const [id] of cardById.entries()) {
+          const state = props.states?.[id];
+          if (!state || state.stage === "new") continue;
+          const stab = getCardStability(state);
+          if (stab > 0) {
+            candidates.push({ id, stability: stab, lapses: state.lapses ?? 0 });
+          }
+        }
+        const top = candidates
+          .sort((a, b) => {
+            if (a.stability !== b.stability) return a.stability - b.stability;
+            return b.lapses - a.lapses;
+          })
+          .slice(0, MAX_SELECTIONS)
+          .map((c) => c.id);
+        if (top.length) setSelectedIds(top);
+      } else if (preset === "dueSoon") {
+        const candidates: Array<{ id: string; diffMs: number }> = [];
+        for (const [id] of cardById.entries()) {
+          const state = props.states?.[id];
+          if (!state || state.stage === "new" || !state.due) continue;
+          candidates.push({ id, diffMs: state.due - props.nowMs });
+        }
+        const top = candidates
+          .sort((a, b) => a.diffMs - b.diffMs)
+          .slice(0, MAX_SELECTIONS)
+          .map((c) => c.id);
+        if (top.length) setSelectedIds(top);
+      }
+    },
+    [reviewLog, cardById, props.states, props.nowMs],
+  );
+
   const searchIndex = React.useMemo(() => {
     const PARENT_TYPES = new Set(["cloze", "reversed", "io", "io-parent", "io_parent", "ioparent"]);
     return (props.cards ?? [])
       .filter((card) => !PARENT_TYPES.has(String(card?.type ?? "").toLowerCase()))
       .map((card) => {
       const id = String(card.id);
-      const label = formatCardLabel(id);
+      const label = getCardDisplayLabel(card, id, 30);
       const idDigits = extractNineDigitId(id) ?? "";
       const title = String(card.title ?? "").trim();
       const location = formatLocation(card.sourceNotePath);
       const preview = getQuestionPreview(card);
-      const combined = normalizeSearchText([id, idDigits, title, location, preview].join(" "));
+      const combined = normalizeSearchText([id, idDigits, title, location, preview, label].join(" "));
       return { card, id, label, idDigits, title, location, preview, combined };
     });
   }, [props.cards]);
@@ -456,14 +590,15 @@ export function ForgettingCurveChart(props: {
     const uniq = Array.from(new Set(selectedIds));
     return uniq.map((id) => {
       const entry = searchIndexById.get(id);
+      const card = cardById.get(id);
       return {
         id,
-        label: formatCardLabel(id),
-        location: entry?.location ?? "Unknown location",
-        preview: entry?.preview ?? "No question text.",
+        label: entry?.label ?? getCardDisplayLabel(card, id, 30),
+        location: entry?.location ?? formatLocation(card?.sourceNotePath),
+        preview: entry?.preview ?? (card ? getQuestionPreview(card) : "No question text."),
       };
     });
-  }, [selectedIds, searchIndexById]);
+  }, [selectedIds, searchIndexById, cardById]);
 
   const resetFilters = () => {
     setSearch(createEmptySearch());
@@ -472,8 +607,12 @@ export function ForgettingCurveChart(props: {
 
   const params = React.useMemo(() => buildFsrsParams(props.scheduler), [props.scheduler]);
   const schedulerCfg = React.useMemo(() => props.scheduler ?? DEFAULT_SCHEDULER, [props.scheduler]);
+  const requestRetention = React.useMemo(
+    () => clamp(Number(schedulerCfg.requestRetention) || 0.9, 0.8, 0.97),
+    [schedulerCfg.requestRetention],
+  );
 
-  const { curves, issues, baseStart } = React.useMemo(() => {
+  const { rawCurves, issues, baseStart } = React.useMemo(() => {
     const curveList: CurveMeta[] = [];
     const issueList: CurveIssue[] = [];
     let minFirstReview = Number.POSITIVE_INFINITY;
@@ -511,24 +650,46 @@ export function ForgettingCurveChart(props: {
       const elapsedSinceLast = Math.max(0, (props.nowMs - lastReviewAt) / MS_DAY);
       const currentRetrievability = forgetting_curve(params.w, elapsedSinceLast, stability);
 
+      const cardState = props.states?.[id];
+      let dueStatus: string | null = null;
+      if (cardState && Number.isFinite(cardState.due) && cardState.due > 0) {
+        const msUntilDue = cardState.due - props.nowMs;
+        const daysDiff = Math.round(msUntilDue / MS_DAY);
+        if (daysDiff < 0) {
+          dueStatus = tx("ui.analytics.forgettingCurve.overdue", `Overdue (${Math.abs(daysDiff)}d)`, { days: String(Math.abs(daysDiff)) });
+        } else if (daysDiff === 0) {
+          dueStatus = tx("ui.analytics.forgettingCurve.dueToday", "Due today");
+        } else {
+          dueStatus = tx("ui.analytics.forgettingCurve.dueIn", `Due in ${daysDiff}d`, { days: String(daysDiff) });
+        }
+      }
+
+      const fullQuestion = getQuestionPreview(card, 120);
+      const displayLabel = getCardDisplayLabel(card, id, 24);
+      const location = formatLocation(card.sourceNotePath);
+
       curveList.push({
         id,
-        label: formatCardLabel(id),
+        label: displayLabel,
+        fullQuestion,
         color: LINE_COLORS[index % LINE_COLORS.length],
+        strokeDasharray: LINE_PATTERNS[index % LINE_PATTERNS.length],
         stabilityDays: stability,
         lastReviewAt,
         firstReviewAt,
         horizon,
         timeline,
         title: card.title ?? null,
+        location,
         elapsedDays: elapsedSinceLast,
         currentRetrievability,
+        dueStatus,
       });
     });
 
     const base = Number.isFinite(minFirstReview) && minFirstReview > 0 ? minFirstReview : props.nowMs;
-    return { curves: curveList, issues: issueList, baseStart: base };
-  }, [selectedIds, cardById, reviewLog, schedulerCfg, props.nowMs, params.w, tx]);
+    return { rawCurves: curveList, issues: issueList, baseStart: base };
+  }, [selectedIds, cardById, reviewLog, schedulerCfg, props.nowMs, props.states, params.w, tx]);
 
   const elapsedDays = React.useMemo(
     () => Math.max(14, Math.ceil((props.nowMs - baseStart) / MS_DAY)),
@@ -539,6 +700,45 @@ export function ForgettingCurveChart(props: {
     () => Math.round((props.nowMs - baseStart) / MS_DAY),
     [props.nowMs, baseStart],
   );
+
+  const curves = React.useMemo(() => {
+    return rawCurves.map((curve) => {
+      const { lastReviewAt, stabilityDays } = curve;
+      let dueDay: number | null = null;
+      for (let day = 0; day <= maxDays; day += 1) {
+        const absoluteTs = baseStart + day * MS_DAY;
+        if (absoluteTs < lastReviewAt) continue;
+        const elapsed = Math.max(0, (absoluteTs - lastReviewAt) / MS_DAY);
+        const r = forgetting_curve(params.w, elapsed, stabilityDays);
+        if (r <= requestRetention) {
+          dueDay = day;
+          break;
+        }
+      }
+
+      let dueStatus = curve.dueStatus;
+      if (!dueStatus && dueDay !== null) {
+        const diff = dueDay - todayDay;
+        if (diff < 0) {
+          dueStatus = tx("ui.analytics.forgettingCurve.overdue", `Overdue (${Math.abs(diff)}d)`, { days: String(Math.abs(diff)) });
+        } else if (diff === 0) {
+          dueStatus = tx("ui.analytics.forgettingCurve.dueToday", "Due today");
+        } else {
+          dueStatus = tx("ui.analytics.forgettingCurve.dueIn", `Due in ${diff}d`, { days: String(diff) });
+        }
+      }
+
+      return { ...curve, dueDay, dueStatus };
+    });
+  }, [rawCurves, baseStart, maxDays, params.w, requestRetention, todayDay, tx]);
+
+  const curveMetaMap = React.useMemo(() => {
+    const map = new Map<string, CurveMeta>();
+    for (const c of curves) {
+      map.set(c.id, c);
+    }
+    return map;
+  }, [curves]);
 
   const data = React.useMemo(() => {
     if (!curves.length) return [] as DataRow[];
@@ -576,18 +776,28 @@ export function ForgettingCurveChart(props: {
   const yTickFormatter = (value: number) => `${Math.round(Number(value) * 100)}%`;
 
   const legendItems = React.useMemo(() => {
-    const items: Array<{ id: string; label: string; color: string; tooltip?: string; status?: string }> = [];
+    const items: Array<{
+      id: string;
+      label: string;
+      color: string;
+      strokeDasharray?: string;
+      tooltip?: string;
+      status?: string;
+    }> = [];
     const curveIds = new Set<string>();
     for (const curve of curves) {
       curveIds.add(curve.id);
       const card = cardById.get(curve.id);
       const title = curve.title ? String(curve.title) : "";
-      const question = card ? getQuestionPreview(card, 80) : "";
-      const tooltip = [title, question].filter(Boolean).join(" — ");
+      const question = curve.fullQuestion || (card ? getQuestionPreview(card, 80) : "");
+      const loc = curve.location ? `(${curve.location})` : "";
+      const idFormatted = formatCardLabel(curve.id);
+      const tooltip = [title, question, loc, `#${idFormatted}`].filter(Boolean).join(" · ");
       items.push({
         id: curve.id,
         label: curve.label,
         color: curve.color,
+        strokeDasharray: curve.strokeDasharray,
         tooltip,
       });
     }
@@ -596,11 +806,13 @@ export function ForgettingCurveChart(props: {
       const card = cardById.get(issue.id);
       const title = card ? String(card.title ?? "") : "";
       const question = card ? getQuestionPreview(card, 80) : "";
-      const tooltip = [title, question].filter(Boolean).join(" — ");
+      const idFormatted = formatCardLabel(issue.id);
+      const tooltip = [title, question, `#${idFormatted}`].filter(Boolean).join(" · ");
       items.push({
         id: issue.id,
-        label: formatCardLabel(issue.id),
+        label: getCardDisplayLabel(card, issue.id, 24),
         color: "var(--destructive)",
+        strokeDasharray: undefined,
         tooltip,
         status: issue.reason,
       });
@@ -611,16 +823,48 @@ export function ForgettingCurveChart(props: {
   const legendContent = () => {
     if (!legendItems.length) return null;
     return (
-      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground learnkit-ana-chart-legend">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground learnkit-ana-chart-legend pt-1">
         {legendItems.map((item) => (
-          <div key={item.id} className="inline-flex items-center gap-2">
-            <span
-              className={`inline-block learnkit-ana-legend-dot learnkit-ana-legend-dot-square ${cssClassForProps({ "--learnkit-legend-color": item.color })}`}
-            />
-            <span data-tooltip={item.tooltip || undefined}>{item.label}</span>
-            {item.status ? <span className="text-muted-foreground">({item.status})</span> : null}
+          <div key={item.id} className="inline-flex items-center gap-1.5 max-w-[240px]">
+            <svg width="18" height="6" className="shrink-0" aria-hidden="true">
+              <line
+                x1="0"
+                y1="3"
+                x2="18"
+                y2="3"
+                stroke={item.color}
+                strokeWidth="2.5"
+                strokeDasharray={item.strokeDasharray}
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="truncate" data-tooltip={item.tooltip || undefined}>
+              {item.label}
+            </span>
+            {item.status ? <span className="text-muted-foreground shrink-0">({item.status})</span> : null}
           </div>
         ))}
+        {curves.length > 0 && (
+          <div className="inline-flex items-center gap-1.5 shrink-0 text-muted-foreground/80">
+            <svg width="18" height="6" className="shrink-0" aria-hidden="true">
+              <line
+                x1="0"
+                y1="3"
+                x2="18"
+                y2="3"
+                stroke="var(--chart-accent-4, #eab308)"
+                strokeWidth="1.5"
+                strokeDasharray="3 3"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="text-[11px]">
+              {tx("ui.analytics.forgettingCurve.targetRetention", `Target (${Math.round(requestRetention * 100)}%)`, {
+                retention: String(Math.round(requestRetention * 100)),
+              })}
+            </span>
+          </div>
+        )}
       </div>
     );
   };
@@ -638,10 +882,14 @@ export function ForgettingCurveChart(props: {
           <div className="text-xs text-muted-foreground">{tx("ui.analytics.forgettingCurve.subtitle", "Recall probability over time")}</div>
         </div>
 
-        <div ref={wrapRef} className="relative inline-flex">
+        <div
+          ref={wrapRef}
+          className="relative inline-flex"
+          style={{ zIndex: open ? "var(--lk-z-analytics-popover)" : undefined }}
+        >
           <button
             type="button"
-            className="learnkit-btn-toolbar learnkit-btn-filter h-7 px-2 text-sm inline-flex items-center gap-2"
+            className="learnkit-btn-toolbar learnkit-btn-filter h-7 px-2 text-sm inline-flex items-center gap-2 cursor-pointer"
             aria-haspopup="listbox"
             aria-expanded={open ? "true" : "false"}
             onClick={() => setOpen((prev) => !prev)}
@@ -670,6 +918,35 @@ export function ForgettingCurveChart(props: {
               className="rounded-md border border-border bg-popover text-popover-foreground shadow-lg p-0 flex flex-col learnkit-ana-popover learnkit-ana-popover-right learnkit-ana-popover-md"
             >
               <div className="p-1">
+                <div className="px-2 pt-1 pb-2">
+                  <div className="text-xs font-medium text-muted-foreground pb-1.5">{tx("ui.analytics.forgettingCurve.presets", "Presets")}</div>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      className="learnkit-btn-pill text-xs px-2 py-0.5 rounded border border-border hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                      onClick={() => applyPreset("recent")}
+                    >
+                      {tx("ui.analytics.forgettingCurve.preset.recent", "Recent")}
+                    </button>
+                    <button
+                      type="button"
+                      className="learnkit-btn-pill text-xs px-2 py-0.5 rounded border border-border hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                      onClick={() => applyPreset("hardest")}
+                    >
+                      {tx("ui.analytics.forgettingCurve.preset.hardest", "Hardest")}
+                    </button>
+                    <button
+                      type="button"
+                      className="learnkit-btn-pill text-xs px-2 py-0.5 rounded border border-border hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                      onClick={() => applyPreset("dueSoon")}
+                    >
+                      {tx("ui.analytics.forgettingCurve.preset.dueSoon", "Due Soon")}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-border my-1" role="separator" />
+
                 <div className="text-sm text-muted-foreground px-2 py-1">{tx("ui.analytics.forgettingCurve.searchCards", "Search cards")}</div>
                 <div className="px-2 pb-2">
                   <input
@@ -704,22 +981,22 @@ export function ForgettingCurveChart(props: {
                             }
                           }}
                         >
-                          <span className="size-3 rounded-full border border-muted-foreground/40 flex items-center justify-center">
+                          <span className="size-3 rounded-full border border-muted-foreground/40 flex items-center justify-center shrink-0">
                             <span className="size-1.5 rounded-full bg-foreground" />
                           </span>
-                          <div className="flex flex-col min-w-0">
+                          <div className="flex flex-col min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                               <span
                                 className="truncate learnkit-ana-truncate-row"
                               >
                                 {result.location}
                               </span>
-                              <span className="shrink-0">{result.label}</span>
+                              <span className="shrink-0 text-[11px] opacity-70">#{formatCardLabel(result.id)}</span>
                             </div>
                             <div
-                              className="truncate learnkit-ana-truncate"
+                              className="truncate learnkit-ana-truncate font-medium text-xs"
                             >
-                              {result.preview}
+                              {result.label}
                             </div>
                           </div>
                         </div>
@@ -758,20 +1035,20 @@ export function ForgettingCurveChart(props: {
                                   }
                                 }}
                               >
-                                <span className="size-3 rounded-full border border-muted-foreground/40 flex items-center justify-center" />
-                                <div className="flex flex-col min-w-0">
+                                <span className="size-3 rounded-full border border-muted-foreground/40 flex items-center justify-center shrink-0" />
+                                <div className="flex flex-col min-w-0 flex-1">
                                   <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                                     <span
                                       className="truncate learnkit-ana-truncate-row"
                                     >
                                       {result.location || tx("ui.analytics.forgettingCurve.unknownLocation", "Unknown location")}
                                     </span>
-                                    <span className="shrink-0">{result.label}</span>
+                                    <span className="shrink-0 text-[11px] opacity-70">#{formatCardLabel(result.id)}</span>
                                   </div>
                                   <div
-                                    className="truncate learnkit-ana-truncate"
+                                    className="truncate learnkit-ana-truncate font-medium text-xs"
                                   >
-                                    {result.preview || tx("ui.analytics.forgettingCurve.noQuestionText", "No question text.")}
+                                    {result.label}
                                   </div>
                                 </div>
                               </div>
@@ -786,7 +1063,7 @@ export function ForgettingCurveChart(props: {
                 ) : null}
 
                 <div className="h-px bg-border my-1" role="separator" />
-                <div className="text-sm text-muted-foreground cursor-pointer px-2" onClick={resetFilters}>
+                <div className="text-sm text-muted-foreground cursor-pointer px-2 py-1 hover:text-foreground transition-colors" onClick={resetFilters}>
                   {tx("ui.analytics.forgettingCurve.resetFilters", "Reset filters")}
                 </div>
               </div>
@@ -816,7 +1093,18 @@ export function ForgettingCurveChart(props: {
                 axisLine={{ stroke: "var(--border)" }}
                 tickLine={{ stroke: "var(--border)" }}
               />
-              <Tooltip content={<CardCurveTooltip baseStart={baseStart} locale={intlLocale} />} isAnimationActive={false} />
+              <Tooltip
+                content={
+                  <CardCurveTooltip
+                    baseStart={baseStart}
+                    locale={intlLocale}
+                    curveMetaMap={curveMetaMap}
+                    requestRetention={requestRetention}
+                    tx={tx}
+                  />
+                }
+                isAnimationActive={false}
+              />
               {todayDay / maxDays > 0.1 && (
                 <ReferenceLine
                   x={todayDay}
@@ -825,6 +1113,34 @@ export function ForgettingCurveChart(props: {
                   label={{ value: tx("ui.view.coach.readiness.today", "Today"), position: "top", fill: "var(--text-muted)", fontSize: 11 }}
                 />
               )}
+              <ReferenceLine
+                y={requestRetention}
+                stroke="var(--chart-accent-4, #eab308)"
+                strokeDasharray="3 3"
+                strokeWidth={1.5}
+                label={{
+                  value: tx("ui.analytics.forgettingCurve.targetRetention", `Target (${Math.round(requestRetention * 100)}%)`, {
+                    retention: String(Math.round(requestRetention * 100)),
+                  }),
+                  position: "insideTopRight",
+                  fill: "var(--text-muted)",
+                  fontSize: 10,
+                }}
+              />
+              {curves.map((curve) => {
+                if (curve.dueDay === null || curve.dueDay === undefined || curve.dueDay < 0 || curve.dueDay > maxDays) return null;
+                return (
+                  <ReferenceDot
+                    key={`due-dot-${curve.id}`}
+                    x={curve.dueDay}
+                    y={requestRetention}
+                    r={4}
+                    fill={curve.color}
+                    stroke="var(--background)"
+                    strokeWidth={1.5}
+                  />
+                );
+              })}
               {curves.map((curve) => (
                 <Line
                   key={curve.id}
@@ -832,6 +1148,7 @@ export function ForgettingCurveChart(props: {
                   dataKey={curve.id}
                   name={curve.label}
                   stroke={curve.color}
+                  strokeDasharray={curve.strokeDasharray}
                   strokeWidth={2}
                   dot={false}
                   isAnimationActive={props.enableAnimations ?? true}
