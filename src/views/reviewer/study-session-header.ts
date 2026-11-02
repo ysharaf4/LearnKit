@@ -16,7 +16,7 @@ import { makeEl } from "../../platform/core/dom-factory";
 export interface TimerState {
   timerRunning: boolean;
   elapsedSeconds: number;
-  timerInterval: number | null;
+  timerInterval: ReturnType<typeof setTimeout> | number | null;
 }
 
 export interface StudySessionHeaderOptions {
@@ -120,7 +120,7 @@ export function renderStudySessionHeader(
     pauseBtn.disabled = false;
     syncTimerControls();
     const scheduleTimerTick = () => {
-      timerState.timerInterval = window.setTimeout(() => {
+      timerState.timerInterval = setTimeout(() => {
         timerState.timerInterval = null;
         if (!timerState.timerRunning) return;
         timerState.elapsedSeconds++;
@@ -133,7 +133,7 @@ export function renderStudySessionHeader(
 
   const pauseTimer = () => {
     if (timerState.timerInterval === null) return;
-    window.clearTimeout(timerState.timerInterval);
+    clearTimeout(timerState.timerInterval as unknown);
     timerState.timerInterval = null;
     timerState.timerRunning = false;
     playBtn.disabled = false;
@@ -143,7 +143,7 @@ export function renderStudySessionHeader(
 
   const disposeTimer = () => {
     if (timerState.timerInterval !== null) {
-      window.clearTimeout(timerState.timerInterval);
+      clearTimeout(timerState.timerInterval as unknown);
       timerState.timerInterval = null;
     }
     timerState.timerRunning = false;
@@ -211,7 +211,10 @@ export function renderStudySessionHeader(
       removalObserver.disconnect();
     }
   });
-  removalObserver.observe(activeDocument.body, { childList: true, subtree: true });
+  const docBody = (typeof activeDocument !== "undefined" ? activeDocument : document)?.body;
+  if (docBody) {
+    removalObserver.observe(docBody, { childList: true, subtree: true });
+  }
 
   // Append to container at the very beginning
   container.insertAdjacentElement("afterbegin", studySessionHeader);

@@ -112,3 +112,8 @@ _Avoid_: AI pipeline, prompt coordinator, assistant service
 A typed event emitted asynchronously during an AI companion workflow execution (such as token delta, intent determined, suggestions batch, edit proposal parsed, test ready, or completion status).
 _Avoid_: Chat chunk, stream packet, LLM message callback
 
+**Card Review Presenter**:
+The deep presenter module (`CardReviewPresenter`) encapsulating active study session DOM construction, interaction state (answer reveals, MCQ/OQ selections, audio playback bindings), rating transitions, and keyboard action execution behind a focused interface.
+_Avoid_: Session renderer, card DOM builder, review view helper
+
+

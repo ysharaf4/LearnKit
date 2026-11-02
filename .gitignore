@@ -3,6 +3,7 @@ node_modules/
 .local/
 .vscode/
 offline/
+graphify-out/
 
 # Temp files
 *.tmp.css

@@ -28,7 +28,7 @@ import { formatCountdown } from "./timers";
 import { renderClozeFront } from "./question-cloze";
 import type { ClozeRenderOptions } from "./question-cloze";
 import { renderDeckMode } from "./render-deck";
-import { renderSessionMode } from "./render-session";
+import { CardReviewPresenter } from "./card-review-presenter";
 
 import { openLearnKitImageZoom } from "./zoom";
 import { LearnKitMarkdownHelper } from "./markdown-render";
@@ -122,6 +122,7 @@ export class LearnKitReviewerView extends ItemView {
   mode: "deck" | "session" = "deck";
   expanded = new Set<string>([""]);
   session: Session | null = null;
+  presenter: CardReviewPresenter | null = null;
 
   showAnswer = false;
   private _timer: number | null = null;
@@ -1192,6 +1193,8 @@ export class LearnKitReviewerView extends ItemView {
   }
 
   async onClose() {
+    this.presenter?.destroy();
+    this.presenter = null;
     this.clearTimer();
     this.clearCountdown();
     closeMoreMenuImpl(this);
@@ -1437,7 +1440,7 @@ export class LearnKitReviewerView extends ItemView {
       try {
         const gradeRes = await this.session.grade(
           rating,
-          (meta || undefined) as Record<string, unknown> | undefined,
+          (meta || undefined),
           msToAnswer,
         );
 
@@ -1982,6 +1985,9 @@ export class LearnKitReviewerView extends ItemView {
     this.clearCountdown();
     closeMoreMenuImpl(this);
 
+    this.presenter?.destroy();
+    this.presenter = null;
+
     this.mode = "deck";
     this._firstDeckRender = true;
     this._isCoachSession = false;
@@ -2031,6 +2037,10 @@ export class LearnKitReviewerView extends ItemView {
     if (shouldDeferSpaceToNativeControl(ev, t)) return;
 
     if (this.mode !== "session" || !this.session) return;
+
+    if (this.presenter && this.presenter.handleKeyDown(ev)) {
+      return;
+    }
 
     const isEscape = ev.key === "Escape" || ev.code === "Escape";
 
@@ -2567,6 +2577,60 @@ export class LearnKitReviewerView extends ItemView {
     return !!this.extractInfoField(card);
   }
 
+  private _buildCardReviewPresenter(targetContainer: HTMLElement): CardReviewPresenter {
+    const activeCard = this.currentCard();
+    const practiceMode = this.isPracticeSession();
+    const clozeSettings = this.plugin.settings?.cards;
+
+    return new CardReviewPresenter({
+      container: targetContainer,
+      session: this.session!,
+      plugin: this.plugin,
+      app: this.app,
+      interfaceLanguage: this.plugin.settings?.general?.interfaceLanguage,
+      fourButtonMode: isFourButtonMode(this.plugin),
+      showGradeIntervals: !!this.plugin.settings.study?.showGradeIntervals,
+      schedulingSettings: this.plugin.settings.scheduling,
+      enableSkipButton: isSkipEnabled(this.plugin),
+      practiceMode,
+      randomizeMcqOptions: isMcqOptionRandomisationEnabled(this.plugin),
+      randomizeOqOrder: this.plugin.settings.study?.randomizeOqOrder ?? true,
+      showInfoByDefault: !!this.plugin.settings.study?.showInfoByDefault,
+      clozeMode: clozeSettings?.clozeMode ?? "standard",
+      clozeBgColor: clozeSettings?.clozeBgColor || "",
+      clozeTextColor: clozeSettings?.clozeTextColor || "",
+      renderMarkdownInto: (el, md, src) => this.renderMarkdownInto(el, md, src),
+      renderImageOcclusionInto: (el, card, src, reveal) => this.renderImageOcclusionInto(el, card, src, reveal),
+      getCardStateForPreview: (id, now) => this.plugin.store.ensureState(id, now),
+      ttsEnabled: this._canUseTtsForCard(activeCard) || !!activeCard?.audioRef,
+      ttsReplayFront: () => this._replayFront(),
+      ttsReplayBack: () => this._replayBack(),
+      initialShowAnswer: this.showAnswer,
+      setShowAnswer: (v) => {
+        this.showAnswer = v;
+        if (v) {
+          const card = this.currentCard();
+          if (card) this._speakCardBack(card);
+        }
+      },
+      rerender: () => this.render(),
+      currentCard: () => this.currentCard(),
+      gradeCurrentRating: (rating, meta) => this.gradeCurrentRating(rating, meta || null),
+      nextCard: (userInitiated) => this.nextCard(userInitiated),
+      onComplete: () => {
+        this.clearTimer();
+        this.clearCountdown();
+      },
+      onBackToDecks: () => this.backToDecks(),
+      onEditCard: () => this.openEditModalForCurrentCard(),
+      onOpenNote: () => void this.openCurrentCardInNote(),
+      onStartPractice: () => this.startPracticeFromCurrentScope(),
+      onCardRendered: (card, isRevealed) => {
+        if (card) this.noteCardPresented(card);
+      },
+    });
+  }
+
   render() {
     const root = this.contentEl;
     const suppressEntranceAos = this._suppressEntranceAosOnce;
@@ -2587,156 +2651,8 @@ export class LearnKitReviewerView extends ItemView {
         const activeCard = this.currentCard();
         if (activeCard) this.noteCardPresented(activeCard);
 
-        const infoPresent = activeCard ? this.hasInfoField(activeCard) : false;
-        const showInfo =
-          !!this.plugin.settings.study.showInfoByDefault || (this.showAnswer && infoPresent);
-        const ttsEnabledForCard = this._canUseTtsForCard(activeCard) || !!activeCard?.audioRef;
-
-        const practiceMode = this.isPracticeSession();
-        const canStartPractice = !this._isCoachSession && !practiceMode && !activeCard && this.canStartPractice(this.session.scope);
-        const hasCardsInScope = !this._isCoachSession && !practiceMode && !activeCard && this.hasCardsInScope(this.session.scope);
-
-        const buildClozeRenderOptions = (): ClozeRenderOptions => {
-          const clozeSettings = this.plugin.settings?.cards;
-          return {
-            mode: clozeSettings?.clozeMode ?? "standard",
-            clozeBgColor: clozeSettings?.clozeBgColor || "",
-            clozeTextColor: clozeSettings?.clozeTextColor || "",
-            typedAnswers: this._typedClozeAnswers,
-            onTypedInput: (answerKey, _idx, val) => {
-              this._typedClozeAnswers.set(answerKey, val);
-            },
-            onTypedSubmit: () => {
-              if (!this.showAnswer) {
-                this.showAnswer = true;
-                const typedCard = this.currentCard();
-                if (typedCard) this._speakCardBack(typedCard);
-                this.render();
-              }
-            },
-          };
-        };
-
-        renderSessionMode({
-          container: existingCardEl.parentElement!,
-          targetEl: existingCardEl,
-          interfaceLanguage: this.plugin.settings?.general?.interfaceLanguage,
-
-          session: this.session,
-          showAnswer: this.showAnswer,
-          setShowAnswer: (v: boolean) => {
-            this.showAnswer = v;
-            if (v) {
-              const card = this.currentCard();
-              if (card) this._speakCardBack(card);
-            }
-          },
-
-          currentCard: () => this.currentCard(),
-
-          backToDecks: () => this.backToDecks(),
-          nextCard: (userInitiated: boolean) => this.nextCard(userInitiated),
-
-          gradeCurrentRating: (rating: Rating, meta: Record<string, unknown> | null) => this.gradeCurrentRating(rating, meta),
-          answerMcq: (idx: number) => this.answerMcq(idx),
-          answerMcqMulti: (indices: number[]) => this.answerMcqMulti(indices),
-          mcqMultiSelected: this._mcqMultiSelected,
-          mcqMultiCardId: this._mcqMultiCardId,
-          syncMcqMultiSelect: (origIdx: number, selected: boolean) => {
-            const card = this.currentCard();
-            if (!card) return;
-            const id = String(card.id);
-            if (this._mcqMultiCardId !== id) {
-              this._mcqMultiSelected.clear();
-              this._mcqMultiCardId = id;
-            }
-            if (selected) {
-              this._mcqMultiSelected.add(origIdx);
-            } else {
-              this._mcqMultiSelected.delete(origIdx);
-            }
-          },
-          answerOq: (userOrder: number[]) => this.answerOq(userOrder),
-          autoGradeMcq: this.isMcqAutoGradeEnabled(),
-          autoGradeOq: this.isOqAutoGradeEnabled(),
-          gradePendingRating: (rating: Rating) => this._gradePendingManualRating(rating),
-          usePendingManualGrade: !!(activeCard && this._peekPendingManualGradeMeta(String(activeCard.id))),
-
-          enableSkipButton: isSkipEnabled(this.plugin),
-          skipCurrentCard: (meta?: Record<string, unknown>) => this.doSkipCurrentCard(meta),
-
-          canBurySuspend: !practiceMode && !!activeCard && !this.session.graded[String(activeCard?.id ?? "")],
-          buryCurrentCard: () => void this.buryCurrentCard(),
-          suspendCurrentCard: () => void this.suspendCurrentCard(),
-
-          canUndo: this.canUndo(),
-          undoLast: () => void this.undoLastGrade(),
-
-          practiceMode,
-          canStartPractice,
-          hasCardsInScope,
-          startPractice: () => this.startPracticeFromCurrentScope(),
-          coachSessionMode: this._isCoachSession,
-          coachEmptyTitle: this.tx(
-            "ui.reviewer.session.coachDoneTitle",
-            "All due flashcards for your study plan have been reviewed for today.",
-          ),
-          coachBackLabel: this.tx("ui.reviewer.session.backToCoach", "Back to Coach"),
-
-          showInfo,
-          clearTimer: () => this.clearTimer(),
-          clearCountdown: () => this.clearCountdown(),
-          getNextDueInScope: (scope: Scope) => this.getNextDueInScope(scope),
-          startCountdown: (nextDue: number, lineEl: HTMLElement) => this.startCountdown(nextDue, lineEl),
-
-          getClozeRenderOptions: buildClozeRenderOptions,
-
-          renderClozeFront: (text: string, reveal: boolean, targetIndex?: number | null, opts?: ClozeRenderOptions) => {
-            const clozeOpts = {
-              ...buildClozeRenderOptions(),
-              ...opts,
-            };
-            return renderClozeFront(text, reveal, targetIndex, clozeOpts);
-          },
-
-          renderMarkdownInto: (containerEl: HTMLElement, md: string, sourcePath: string) =>
-            this.renderMarkdownInto(containerEl, md, sourcePath),
-
-          renderImageOcclusionInto: (
-            containerEl: HTMLElement,
-            card2: CardRecord,
-            sourcePath2: string,
-            reveal2: boolean,
-          ) => this.renderImageOcclusionInto(containerEl, card2, sourcePath2, reveal2),
-          getHotspotPlacedCount: (cardId: string) => this._getPendingHotspotPlacedCount(cardId),
-
-          randomizeMcqOptions: isMcqOptionRandomisationEnabled(this.plugin),
-          randomizeOqOrder: this.plugin.settings.study?.randomizeOqOrder ?? true,
-
-          fourButtonMode: isFourButtonMode(this.plugin),
-          showGradeIntervals: !!this.plugin.settings.study?.showGradeIntervals,
-          schedulingSettings: this.plugin.settings.scheduling,
-          getCardStateForPreview: (cardId: string, now: number) => this.plugin.store.ensureState(cardId, now),
-
-          openEditModal: () => this.openEditModalForCurrentCard(),
-
-          applyAOS: false,
-          aosDelayMs: 0,
-
-          ttsEnabled: ttsEnabledForCard,
-          ttsReplayFront: () => this._replayFront(),
-          ttsReplayBack: () => this._replayBack(),
-          ttsReplayMcqQuestion: () => this._replayMcqQuestion(),
-          ttsReplayMcqOptions: () => this._replayMcqOptions(),
-          ttsReplayMcqAnswer: () => this._replayMcqAnswer(),
-          ttsReplayOqQuestion: () => this._replayOqQuestion(),
-          ttsReplayOqSteps: () => this._replayOqSteps(),
-          ttsReplayOqAnswer: () => this._replayOqAnswer(),
-
-          hideSessionTopbar: !!this.plugin.settings.study?.hideSessionTopbar,
-
-          rerender: () => this.render(),
-        });
+        this.presenter = this._buildCardReviewPresenter(existingCardEl.parentElement!);
+        this.presenter.render(existingCardEl);
 
         // TTS: sync active audio buttons and speak front/back after render
         if (isVaultAudioPlaying()) {
@@ -2880,158 +2796,8 @@ export class LearnKitReviewerView extends ItemView {
     const activeCard = this.currentCard();
     if (activeCard) this.noteCardPresented(activeCard);
 
-    const infoPresent = activeCard ? this.hasInfoField(activeCard) : false;
-    const showInfo =
-      !!this.plugin.settings.study.showInfoByDefault || (this.showAnswer && infoPresent);
-    const ttsEnabledForCard = this._canUseTtsForCard(activeCard) || !!activeCard?.audioRef;
-
-    const practiceMode = this.isPracticeSession();
-    const canStartPractice = !this._isCoachSession && !practiceMode && !activeCard && this.canStartPractice(this.session.scope);
-    const hasCardsInScope = !this._isCoachSession && !practiceMode && !activeCard && this.hasCardsInScope(this.session.scope);
-
-    const buildClozeRenderOptions = (): ClozeRenderOptions => {
-      const clozeSettings = this.plugin.settings?.cards;
-      return {
-        mode: clozeSettings?.clozeMode ?? "standard",
-        clozeBgColor: clozeSettings?.clozeBgColor || "",
-        clozeTextColor: clozeSettings?.clozeTextColor || "",
-        typedAnswers: this._typedClozeAnswers,
-        onTypedInput: (answerKey, _idx, val) => {
-          this._typedClozeAnswers.set(answerKey, val);
-        },
-        onTypedSubmit: () => {
-          if (!this.showAnswer) {
-            this.showAnswer = true;
-            const typedCard = this.currentCard();
-            if (typedCard) this._speakCardBack(typedCard);
-            this.render();
-          }
-        },
-      };
-    };
-
-    renderSessionMode({
-      container: sessionColumn ?? contentHost,
-      interfaceLanguage: this.plugin.settings?.general?.interfaceLanguage,
-
-      session: this.session,
-      showAnswer: this.showAnswer,
-      setShowAnswer: (v: boolean) => {
-        this.showAnswer = v;
-        // TTS: speak back of card when answer is revealed
-        if (v) {
-          const card = this.currentCard();
-          if (card) this._speakCardBack(card);
-        }
-      },
-
-      currentCard: () => this.currentCard(),
-
-      backToDecks: () => this.backToDecks(),
-      nextCard: (userInitiated: boolean) => this.nextCard(userInitiated),
-
-      gradeCurrentRating: (rating: Rating, meta: Record<string, unknown> | null) => this.gradeCurrentRating(rating, meta),
-      answerMcq: (idx: number) => this.answerMcq(idx),
-      answerMcqMulti: (indices: number[]) => this.answerMcqMulti(indices),
-      mcqMultiSelected: this._mcqMultiSelected,
-      mcqMultiCardId: this._mcqMultiCardId,
-      syncMcqMultiSelect: (origIdx: number, selected: boolean) => {
-        const card = this.currentCard();
-        if (!card) return;
-        const id = String(card.id);
-        if (this._mcqMultiCardId !== id) {
-          this._mcqMultiSelected.clear();
-          this._mcqMultiCardId = id;
-        }
-        if (selected) {
-          this._mcqMultiSelected.add(origIdx);
-        } else {
-          this._mcqMultiSelected.delete(origIdx);
-        }
-        // No full re-render — the click handler in render-session
-        // updates the DOM in-place for instant feedback.
-      },
-      answerOq: (userOrder: number[]) => this.answerOq(userOrder),
-      autoGradeMcq: this.isMcqAutoGradeEnabled(),
-      autoGradeOq: this.isOqAutoGradeEnabled(),
-      gradePendingRating: (rating: Rating) => this._gradePendingManualRating(rating),
-      usePendingManualGrade: !!(activeCard && this._peekPendingManualGradeMeta(String(activeCard.id))),
-
-      enableSkipButton: isSkipEnabled(this.plugin),
-      skipCurrentCard: (meta?: Record<string, unknown>) => this.doSkipCurrentCard(meta),
-
-      canBurySuspend: !practiceMode && !!activeCard && !this.session.graded[String(activeCard?.id ?? "")],
-      buryCurrentCard: () => void this.buryCurrentCard(),
-      suspendCurrentCard: () => void this.suspendCurrentCard(),
-
-      canUndo: this.canUndo(),
-      undoLast: () => void this.undoLastGrade(),
-
-      practiceMode,
-      canStartPractice,
-      hasCardsInScope,
-      startPractice: () => this.startPracticeFromCurrentScope(),
-      coachSessionMode: this._isCoachSession,
-      coachEmptyTitle: this.tx(
-        "ui.reviewer.session.coachDoneTitle",
-        "All due flashcards for your study plan have been reviewed for today.",
-      ),
-      coachBackLabel: this.tx("ui.reviewer.session.backToCoach", "Back to Coach"),
-
-      showInfo,
-      clearTimer: () => this.clearTimer(),
-      clearCountdown: () => this.clearCountdown(),
-      getNextDueInScope: (scope: Scope) => this.getNextDueInScope(scope),
-      startCountdown: (nextDue: number, lineEl: HTMLElement) => this.startCountdown(nextDue, lineEl),
-
-      getClozeRenderOptions: buildClozeRenderOptions,
-
-      renderClozeFront: (text: string, reveal: boolean, targetIndex?: number | null, opts?: ClozeRenderOptions) => {
-        const clozeOpts = {
-          ...buildClozeRenderOptions(),
-          ...opts,
-        };
-        return renderClozeFront(text, reveal, targetIndex, clozeOpts);
-      },
-
-      renderMarkdownInto: (containerEl: HTMLElement, md: string, sourcePath: string) =>
-        this.renderMarkdownInto(containerEl, md, sourcePath),
-
-      renderImageOcclusionInto: (
-        containerEl: HTMLElement,
-        card2: CardRecord,
-        sourcePath2: string,
-        reveal2: boolean,
-      ) => this.renderImageOcclusionInto(containerEl, card2, sourcePath2, reveal2),
-      getHotspotPlacedCount: (cardId: string) => this._getPendingHotspotPlacedCount(cardId),
-
-      randomizeMcqOptions: isMcqOptionRandomisationEnabled(this.plugin),
-      randomizeOqOrder: this.plugin.settings.study?.randomizeOqOrder ?? true,
-
-      fourButtonMode: isFourButtonMode(this.plugin),
-      showGradeIntervals: !!this.plugin.settings.study?.showGradeIntervals,
-      schedulingSettings: this.plugin.settings.scheduling,
-      getCardStateForPreview: (cardId: string, now: number) => this.plugin.store.ensureState(cardId, now),
-
-      openEditModal: () => this.openEditModalForCurrentCard(),
-
-      applyAOS: false,
-      aosDelayMs: this._firstSessionRender ? 100 : 0,
-
-      ttsEnabled: ttsEnabledForCard,
-      ttsReplayFront: () => this._replayFront(),
-      ttsReplayBack: () => this._replayBack(),
-      ttsReplayMcqQuestion: () => this._replayMcqQuestion(),
-      ttsReplayMcqOptions: () => this._replayMcqOptions(),
-      ttsReplayMcqAnswer: () => this._replayMcqAnswer(),
-      ttsReplayOqQuestion: () => this._replayOqQuestion(),
-      ttsReplayOqSteps: () => this._replayOqSteps(),
-      ttsReplayOqAnswer: () => this._replayOqAnswer(),
-
-      hideSessionTopbar: !!this.plugin.settings.study?.hideSessionTopbar,
-
-      rerender: () => this.render(),
-    });
+    this.presenter = this._buildCardReviewPresenter(sessionColumn ?? contentHost);
+    this.presenter.mount();
 
     // TTS: sync active audio buttons and speak front/back after render so OQ shuffled display order is initialized.
     if (isVaultAudioPlaying()) {

@@ -6,7 +6,7 @@ Agent reference and navigation guide for the LearnKit codebase.
 
 Front-loaded pointers to primary collaborators by subsystem:
 
-- **Reviewer View & Card Sessions**: [`review-view.ts`](file:///Users/ysharaf/LearnKit/src/views/reviewer/review-view.ts) manages leaf lifecycle, queues, and keyboard shortcuts; [`render-session.ts`](file:///Users/ysharaf/LearnKit/src/views/reviewer/render-session.ts) handles card DOM rendering, button bars, audio buttons, and rating transitions.
+- **Reviewer View & Card Sessions**: [`review-view.ts`](file:///Users/ysharaf/LearnKit/src/views/reviewer/review-view.ts) manages leaf lifecycle, queues, and keyboard shortcuts; [`card-review-presenter.ts`](file:///Users/ysharaf/LearnKit/src/views/reviewer/card-review-presenter.ts) handles active card DOM rendering, interaction state, audio bindings, and rating transitions.
 - **Reading View & Hover Cards**: [`reading-view.ts`](file:///Users/ysharaf/LearnKit/src/views/reading/reading-view.ts) handles reading mode markdown decorations, embedded widgets, hover flashcards, and hotkeys.
 - **Audio Playback**: [`audio-player.ts`](file:///Users/ysharaf/LearnKit/src/platform/integrations/audio/audio-player.ts) provides event-driven audio playback via `AudioPlaybackController`, sound wave animations, stop/reset lifecycle, and DOM-decoupled button subscriptions.
 - **Card Parsing & Serialization**: [`card-text-parser.ts`](file:///Users/ysharaf/LearnKit/src/engine/parser/card-text-parser.ts) extracts cards from markdown delimiters; [`derived-card-generator.ts`](file:///Users/ysharaf/LearnKit/src/platform/integrations/sync/derived-card-generator.ts) expands cloze, reversed, and combo variants.
