@@ -42,6 +42,7 @@ import { getRatingIntervalPreview } from "../../platform/core/grade-intervals";
 import type { CardState, SchedulerSettings } from "../../platform/types/scheduler";
 import { makeEl } from "../../platform/core/dom-factory";
 import { StudySession } from "../../engine/study-session/study-session";
+import { isSpaceKey } from "./key-actions";
 import type LearnKitPlugin from "../../main";
 
 export interface CardReviewPresenterOptions {
@@ -874,20 +875,14 @@ export class CardReviewPresenter {
     // Do not intercept input when typing inside textareas or inputs
     const target = ev.target as HTMLElement | null;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
-      if (ev.key === "Enter" && target.tagName === "TEXTAREA" && !ev.shiftKey) {
-        if (!this.showAnswer) {
-          ev.preventDefault();
-          this.revealAnswer();
-          return true;
-        }
-      }
       return false;
     }
 
-    const isAdvance = ev.key === " " || ev.key === "Enter";
+    const isSpace = isSpaceKey(ev);
+    const isAdvance = isSpace || ev.key === "Enter";
 
-    // Reveal answer on Space or Enter
-    if (!this.showAnswer && isAdvance) {
+    // Reveal answer on Space only
+    if (!this.showAnswer && isSpace) {
       ev.preventDefault();
       ev.stopPropagation();
       this.revealAnswer();
@@ -1582,7 +1577,7 @@ export class CardReviewPresenter {
 // Compatibility Adapter (renderSessionMode)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function renderSessionMode(args: any): void {
+export function renderSessionMode(args: unknown): void {
   const presenter = new CardReviewPresenter({
     container: args.container,
     session: args.session,

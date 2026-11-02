@@ -32,7 +32,7 @@ import { CardReviewPresenter } from "./card-review-presenter";
 
 import { openLearnKitImageZoom } from "./zoom";
 import { LearnKitMarkdownHelper } from "./markdown-render";
-import { isRevealOrNextKey, shouldDeferSpaceToNativeControl } from "./key-actions";
+import { isRevealOrNextKey, isSpaceKey, shouldDeferSpaceToNativeControl } from "./key-actions";
 import { processCircleFlagsInMarkdown, hydrateCircleFlagsInElement } from "../../platform/flags/flag-tokens";
 
 // split-out helpers
@@ -2417,21 +2417,26 @@ export class LearnKitReviewerView extends ItemView {
     const isHotspot = card.type === "hq" || card.type === "hq-child";
 
     if (isHotspot) {
-      if (isAdvance && !graded) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        closeMoreMenuImpl(this);
-
-        if (!this.showAnswer) {
+      if (!this.showAnswer) {
+        if (isSpaceKey(ev) && !graded) {
           if (this._getHotspotInteractionMode(card) === "drag-drop" && !this._isHotspotDragRevealReady(card)) {
             return;
           }
+          ev.preventDefault();
+          ev.stopPropagation();
+          closeMoreMenuImpl(this);
           this.showAnswer = true;
           const revealCard = this.currentCard();
           if (revealCard) this._speakCardBack(revealCard);
           this.render();
-          return;
         }
+        return;
+      }
+
+      if (isAdvance && !graded) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeMoreMenuImpl(this);
 
         if (this.showAnswer && this.isPracticeSession()) {
           void this.nextCard(true);
@@ -2484,19 +2489,24 @@ export class LearnKitReviewerView extends ItemView {
     }
 
     if (isRevealable) {
-      if (isAdvance && !graded) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        closeMoreMenuImpl(this);
-
-        if (!this.showAnswer) {
+      if (!this.showAnswer) {
+        if (isSpaceKey(ev) && !graded) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          closeMoreMenuImpl(this);
           this.showAnswer = true;
           // speak back of card when answer is revealed via keyboard
           const revealCard = this.currentCard();
           if (revealCard) this._speakCardBack(revealCard);
           this.render();
-          return;
         }
+        return;
+      }
+
+      if (isAdvance && !graded) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeMoreMenuImpl(this);
 
         if (this.showAnswer && this.isPracticeSession()) {
           void this.nextCard(true);
@@ -2516,14 +2526,7 @@ export class LearnKitReviewerView extends ItemView {
         ev.stopPropagation();
         closeMoreMenuImpl(this);
 
-        if (!this.showAnswer) {
-          this.showAnswer = true;
-          // TTS: speak back of card when answer is revealed via grade key
-          const gradeCard = this.currentCard();
-          if (gradeCard) this._speakCardBack(gradeCard);
-          this.render();
-          return;
-        }
+        if (!this.showAnswer) return;
 
         if (!graded) {
           let rating: Rating;

@@ -159,6 +159,27 @@ describe("CardReviewPresenter", () => {
     });
     presenter.mount();
 
+    // Enter must NOT reveal answer
+    const enterEv = new KeyboardEvent("keydown", { key: "Enter" });
+    const handledEnter = presenter.handleKeyDown(enterEv);
+    expect(handledEnter).toBe(false);
+    expect(presenter.isAnswerRevealed).toBe(false);
+
+    // Number keys must NOT reveal answer
+    for (const key of ["1", "2", "3", "4"]) {
+      const numEv = new KeyboardEvent("keydown", { key });
+      expect(presenter.handleKeyDown(numEv)).toBe(false);
+      expect(presenter.isAnswerRevealed).toBe(false);
+    }
+
+    // Enter inside a textarea must NOT reveal answer
+    const textarea = document.createElement("textarea");
+    container.appendChild(textarea);
+    const textareaEnterEv = new KeyboardEvent("keydown", { key: "Enter" });
+    Object.defineProperty(textareaEnterEv, "target", { value: textarea, writable: false });
+    expect(presenter.handleKeyDown(textareaEnterEv)).toBe(false);
+    expect(presenter.isAnswerRevealed).toBe(false);
+
     // Space reveals answer
     const spaceEv = new KeyboardEvent("keydown", { key: " " });
     const handledReveal = presenter.handleKeyDown(spaceEv);
