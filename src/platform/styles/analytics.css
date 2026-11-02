@@ -628,7 +628,7 @@ body.is-mobile .learnkit .learnkit-analytics-root > :is(.learnkit-ana-grid, .gri
 .learnkit .learnkit-ana-popover {
   position: absolute;
   top: calc(100% + 6px);
-  z-index: var(--lk-z-analytics-popover);
+  z-index: 1000;
 }
 
 .learnkit .learnkit-ana-popover-right {

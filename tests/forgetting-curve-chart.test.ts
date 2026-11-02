@@ -184,9 +184,16 @@ describe("ForgettingCurveChart", () => {
     expect(container.textContent).toContain("Hardest");
     expect(container.textContent).toContain("Due Soon");
 
-    // Verify search input is present
+    // Verify search input and selected cards section are completely removed
     const searchInput = container.querySelector<HTMLInputElement>("input.input");
-    expect(searchInput).not.toBeNull();
+    expect(searchInput).toBeNull();
+    expect(container.textContent).not.toContain("Search cards");
+    expect(container.textContent).not.toContain("Selected cards");
+
+    // Verify active preset styling is applied to Recent
+    const recentBtn = container.querySelector<HTMLButtonElement>("button.learnkit-btn-pill:first-of-type");
+    expect(recentBtn?.classList.contains("is-active")).toBe(true);
+    expect(recentBtn?.getAttribute("aria-pressed")).toBe("true");
 
     root.unmount();
     container.remove();
@@ -222,7 +229,26 @@ describe("ForgettingCurveChart", () => {
       hardestBtn?.click();
     });
 
-    // Hardest cards (lowest stability) includes card-166175035 (stability 4)
+    // Hardest button is now active
+    expect(hardestBtn?.classList.contains("is-active")).toBe(true);
+
+    // Click Reset filters
+    const resetBtn = Array.from(container.querySelectorAll<HTMLDivElement>("div")).find((d) => d.textContent === "Reset filters");
+    expect(resetBtn).toBeDefined();
+    await act(async () => {
+      resetBtn?.click();
+    });
+
+    // Selections cleared and active preset is null
+    expect(hardestBtn?.classList.contains("is-active")).toBe(false);
+
+    // Click Hardest again and close filter to check legend
+    await act(async () => {
+      hardestBtn?.click();
+      filterButton?.click();
+    });
+
+    // Legend now displays hardest card
     expect(container.textContent).toContain("Where does glycolysis");
 
     root.unmount();
@@ -282,14 +308,21 @@ describe("ForgettingCurveChart", () => {
     expect(container.textContent).toContain("die Spüle, die Spülen");
     expect(container.textContent).not.toContain("**die Spüle");
 
-    // Open filter and verify popover trigger wrapper has elevated zIndex
+    // Open filter and verify legend is hidden to prevent overlap
     const filterButton = container.querySelector<HTMLButtonElement>("button.learnkit-btn-filter");
     await act(async () => {
       filterButton?.click();
     });
 
-    const triggerWrap = filterButton?.parentElement;
-    expect(triggerWrap?.style.zIndex).toBe("var(--lk-z-analytics-popover)");
+    // When filter is open, legend container content is hidden so it never collides with the popover
+    const legendContainer = container.querySelector<HTMLDivElement>(".learnkit-ana-scroll-48");
+    expect(legendContainer?.children.length).toBe(0);
+
+    // Close filter and verify legend content reappears
+    await act(async () => {
+      filterButton?.click();
+    });
+    expect(legendContainer?.children.length).toBeGreaterThan(0);
 
     root.unmount();
     container.remove();

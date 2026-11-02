@@ -99,10 +99,6 @@ const LINE_PATTERNS: Array<string | undefined> = [
   "2 3",     // dotted
 ];
 
-function createEmptySearch(): SearchState {
-  return { query: "", error: null };
-}
-
 type CurveMeta = {
   id: string;
   label: string;
@@ -132,19 +128,6 @@ type DataRow = {
   [key: string]: number | null;
 };
 
-type SearchResult = {
-  id: string;
-  label: string;
-  location: string;
-  title: string;
-  preview: string;
-  score: number;
-};
-
-type SearchState = {
-  query: string;
-  error: string | null;
-};
 
 function clamp(x: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, x));
@@ -218,13 +201,6 @@ function getCardDisplayLabel(card?: CardRecord | null, id?: string, maxChars = 2
     return digits ? `#${digits}` : id;
   }
   return "Card";
-}
-
-function normalizeSearchText(raw: string) {
-  return String(raw ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
 }
 
 function formatLocation(path: string | null | undefined) {
@@ -385,8 +361,8 @@ export function ForgettingCurveChart(props: {
 }) {
   const tx = React.useMemo(() => (token: string, fallback: string, vars?: Record<string, string | number>) => t(props.locale, token, fallback, vars), [props.locale]);
   const intlLocale = React.useMemo(() => interfaceLocaleToIntlLocale(props.locale), [props.locale]);
-  const [search, setSearch] = React.useState<SearchState>(() => createEmptySearch());
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const [activePreset, setActivePreset] = React.useState<"recent" | "hardest" | "dueSoon" | null>("recent");
   const seededRef = React.useRef(false);
   const [open, setOpen] = React.useState(false);
 
@@ -451,13 +427,14 @@ export function ForgettingCurveChart(props: {
 
     if (top.length) {
       setSelectedIds(top);
+      setActivePreset("recent");
       seededRef.current = true;
     }
   }, [reviewLog, selectedIds.length, cardById]);
 
   const applyPreset = React.useCallback(
     (preset: "recent" | "hardest" | "dueSoon") => {
-      setSearch((prev) => ({ ...prev, error: null }));
+      setActivePreset(preset);
       if (preset === "recent") {
         const lastById = new Map<string, number>();
         for (const entry of reviewLog) {
@@ -510,99 +487,18 @@ export function ForgettingCurveChart(props: {
     [reviewLog, cardById, props.states, props.nowMs],
   );
 
-  const searchIndex = React.useMemo(() => {
-    const PARENT_TYPES = new Set(["cloze", "reversed", "io", "io-parent", "io_parent", "ioparent"]);
-    return (props.cards ?? [])
-      .filter((card) => !PARENT_TYPES.has(String(card?.type ?? "").toLowerCase()))
-      .map((card) => {
-      const id = String(card.id);
-      const label = getCardDisplayLabel(card, id, 30);
-      const idDigits = extractNineDigitId(id) ?? "";
-      const title = String(card.title ?? "").trim();
-      const location = formatLocation(card.sourceNotePath);
-      const preview = getQuestionPreview(card);
-      const combined = normalizeSearchText([id, idDigits, title, location, preview, label].join(" "));
-      return { card, id, label, idDigits, title, location, preview, combined };
-    });
-  }, [props.cards]);
-
-  const getSearchResults = React.useCallback(
-    (query: string) => {
-      const q = normalizeSearchText(query);
-      if (!q) return [] as SearchResult[];
-
-      const results: SearchResult[] = [];
-      for (const entry of searchIndex) {
-        let score = 99;
-        const idMatch = entry.idDigits && entry.idDigits === q;
-        const idIncludes = entry.idDigits && entry.idDigits.includes(q);
-        const titleNorm = normalizeSearchText(entry.title);
-        const previewNorm = normalizeSearchText(entry.preview);
-        const locationNorm = normalizeSearchText(entry.location);
-
-        if (entry.id === q || idMatch) score = 0;
-        else if (idIncludes || entry.id.includes(q)) score = 1;
-        else if (titleNorm.startsWith(q)) score = 2;
-        else if (titleNorm.includes(q)) score = 3;
-        else if (previewNorm.includes(q)) score = 4;
-        else if (locationNorm.includes(q)) score = 5;
-        else if (entry.combined.includes(q)) score = 6;
-        else continue;
-
-        results.push({
-          id: entry.id,
-          label: entry.label,
-          location: entry.location,
-          title: entry.title,
-          preview: entry.preview,
-          score,
-        });
-      }
-
-      return results
-        .sort((a, b) => {
-          if (a.score !== b.score) return a.score - b.score;
-          return a.label.localeCompare(b.label);
-        })
-        .slice(0, 5);
-    },
-    [searchIndex],
-  );
-
-  const toggleSelection = (id: string) => {
-    setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((item) => item !== id);
-      if (prev.length >= MAX_SELECTIONS) {
-        setSearch((cur) => ({ ...cur, error: `Select up to ${MAX_SELECTIONS} cards.` }));
-        return prev;
-      }
-      return [...prev, id];
-    });
+  const resetFilters = () => {
+    setSelectedIds([]);
+    setActivePreset(null);
   };
 
-  const searchIndexById = React.useMemo(() => {
-    const map = new Map<string, (typeof searchIndex)[number]>();
-    searchIndex.forEach((entry) => map.set(entry.id, entry));
-    return map;
-  }, [searchIndex]);
-
-  const selectedResults = React.useMemo(() => {
-    const uniq = Array.from(new Set(selectedIds));
-    return uniq.map((id) => {
-      const entry = searchIndexById.get(id);
-      const card = cardById.get(id);
-      return {
-        id,
-        label: entry?.label ?? getCardDisplayLabel(card, id, 30),
-        location: entry?.location ?? formatLocation(card?.sourceNotePath),
-        preview: entry?.preview ?? (card ? getQuestionPreview(card) : "No question text."),
-      };
-    });
-  }, [selectedIds, searchIndexById, cardById]);
-
-  const resetFilters = () => {
-    setSearch(createEmptySearch());
-    setSelectedIds([]);
+  const getPresetBtnClass = (preset: "recent" | "hardest" | "dueSoon") => {
+    const isActive = activePreset === preset;
+    return `learnkit-btn-pill text-xs px-2.5 py-1 rounded border transition-colors cursor-pointer ${
+      isActive
+        ? "is-active border-primary bg-primary text-primary-foreground font-medium"
+        : "border-border hover:bg-accent hover:text-accent-foreground text-muted-foreground"
+    }`;
   };
 
   const params = React.useMemo(() => buildFsrsParams(props.scheduler), [props.scheduler]);
@@ -838,7 +734,7 @@ export function ForgettingCurveChart(props: {
                 strokeLinecap="round"
               />
             </svg>
-            <span className="truncate" data-tooltip={item.tooltip || undefined}>
+            <span className="truncate" title={item.tooltip || undefined}>
               {item.label}
             </span>
             {item.status ? <span className="text-muted-foreground shrink-0">({item.status})</span> : null}
@@ -882,11 +778,7 @@ export function ForgettingCurveChart(props: {
           <div className="text-xs text-muted-foreground">{tx("ui.analytics.forgettingCurve.subtitle", "Recall probability over time")}</div>
         </div>
 
-        <div
-          ref={wrapRef}
-          className="relative inline-flex"
-          style={{ zIndex: open ? "var(--lk-z-analytics-popover)" : undefined }}
-        >
+        <div ref={wrapRef} className="relative inline-flex">
           <button
             type="button"
             className="learnkit-btn-toolbar learnkit-btn-filter h-7 px-2 text-sm inline-flex items-center gap-2 cursor-pointer"
@@ -923,21 +815,24 @@ export function ForgettingCurveChart(props: {
                   <div className="flex gap-1.5">
                     <button
                       type="button"
-                      className="learnkit-btn-pill text-xs px-2 py-0.5 rounded border border-border hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                      className={getPresetBtnClass("recent")}
+                      aria-pressed={activePreset === "recent" ? "true" : "false"}
                       onClick={() => applyPreset("recent")}
                     >
                       {tx("ui.analytics.forgettingCurve.preset.recent", "Recent")}
                     </button>
                     <button
                       type="button"
-                      className="learnkit-btn-pill text-xs px-2 py-0.5 rounded border border-border hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                      className={getPresetBtnClass("hardest")}
+                      aria-pressed={activePreset === "hardest" ? "true" : "false"}
                       onClick={() => applyPreset("hardest")}
                     >
                       {tx("ui.analytics.forgettingCurve.preset.hardest", "Hardest")}
                     </button>
                     <button
                       type="button"
-                      className="learnkit-btn-pill text-xs px-2 py-0.5 rounded border border-border hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                      className={getPresetBtnClass("dueSoon")}
+                      aria-pressed={activePreset === "dueSoon" ? "true" : "false"}
                       onClick={() => applyPreset("dueSoon")}
                     >
                       {tx("ui.analytics.forgettingCurve.preset.dueSoon", "Due Soon")}
@@ -946,124 +841,18 @@ export function ForgettingCurveChart(props: {
                 </div>
 
                 <div className="h-px bg-border my-1" role="separator" />
-
-                <div className="text-sm text-muted-foreground px-2 py-1">{tx("ui.analytics.forgettingCurve.searchCards", "Search cards")}</div>
-                <div className="px-2 pb-2">
-                  <input
-                    className="input w-full text-sm"
-                    type="text"
-                    placeholder={tx("ui.analytics.forgettingCurve.searchInputPlaceholder", "Search by ID, title, question")}
-                    value={search.query}
-                    onChange={(event) => {
-                      setSearch({ query: event.currentTarget.value, error: null });
-                    }}
-                  />
-                </div>
-
-                {search.error ? <div className="text-xs text-muted-foreground px-2 pb-2">{search.error}</div> : null}
-
-                {selectedResults.length ? (
-                  <div className="px-2 pb-2">
-                    <div className="text-xs text-muted-foreground px-2 pb-1">{tx("ui.analytics.forgettingCurve.selectedCards", "Selected cards")}</div>
-                    <div className="flex flex-col">
-                      {selectedResults.map((result) => (
-                        <div
-                          key={`selected-${result.id}`}
-                          role="menuitemradio"
-                          aria-checked="true"
-                          tabIndex={0}
-                          className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer select-none outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground min-w-0"
-                          onClick={() => toggleSelection(result.id)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              toggleSelection(result.id);
-                            }
-                          }}
-                        >
-                          <span className="size-3 rounded-full border border-muted-foreground/40 flex items-center justify-center shrink-0">
-                            <span className="size-1.5 rounded-full bg-foreground" />
-                          </span>
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                              <span
-                                className="truncate learnkit-ana-truncate-row"
-                              >
-                                {result.location}
-                              </span>
-                              <span className="shrink-0 text-[11px] opacity-70">#{formatCardLabel(result.id)}</span>
-                            </div>
-                            <div
-                              className="truncate learnkit-ana-truncate font-medium text-xs"
-                            >
-                              {result.label}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {search.query.trim().length ? (
-                  <div className="px-2 pb-2">
-                    {(() => {
-                      const selectedSet = new Set(selectedIds);
-                      const results = getSearchResults(search.query).filter((result) => !selectedSet.has(result.id));
-                      return results.length ? (
-                        <div className="flex flex-col">
-                          {results.map((result) => {
-                            const disabled = selectedIds.length >= MAX_SELECTIONS;
-                            return (
-                              <div
-                                key={result.id}
-                                role="menuitemradio"
-                                aria-checked="false"
-                                tabIndex={0}
-                                className={
-                                  `bc group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer select-none outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground min-w-0${disabled ? " is-disabled" : ""}`
-                                }
-                                onClick={() => {
-                                  if (disabled) return;
-                                  toggleSelection(result.id);
-                                }}
-                                onKeyDown={(event) => {
-                                  if (disabled) return;
-                                  if (event.key === "Enter" || event.key === " ") {
-                                    event.preventDefault();
-                                    toggleSelection(result.id);
-                                  }
-                                }}
-                              >
-                                <span className="size-3 rounded-full border border-muted-foreground/40 flex items-center justify-center shrink-0" />
-                                <div className="flex flex-col min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                                    <span
-                                      className="truncate learnkit-ana-truncate-row"
-                                    >
-                                      {result.location || tx("ui.analytics.forgettingCurve.unknownLocation", "Unknown location")}
-                                    </span>
-                                    <span className="shrink-0 text-[11px] opacity-70">#{formatCardLabel(result.id)}</span>
-                                  </div>
-                                  <div
-                                    className="truncate learnkit-ana-truncate font-medium text-xs"
-                                  >
-                                    {result.label}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-muted-foreground">{tx("ui.analytics.forgettingCurve.noMatches", "No matches.")}</div>
-                      );
-                    })()}
-                  </div>
-                ) : null}
-
-                <div className="h-px bg-border my-1" role="separator" />
-                <div className="text-sm text-muted-foreground cursor-pointer px-2 py-1 hover:text-foreground transition-colors" onClick={resetFilters}>
+                <div
+                  className="text-sm text-muted-foreground cursor-pointer px-2 py-1 hover:text-foreground transition-colors"
+                  role="button"
+                  tabIndex={0}
+                  onClick={resetFilters}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      resetFilters();
+                    }
+                  }}
+                >
                   {tx("ui.analytics.forgettingCurve.resetFilters", "Reset filters")}
                 </div>
               </div>
@@ -1159,12 +948,12 @@ export function ForgettingCurveChart(props: {
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-          {selectedIds.length ? tx("ui.analytics.forgettingCurve.notStudied", "Selected cards have not been studied yet.") : tx("ui.analytics.forgettingCurve.searchPlaceholder", "Search for cards to plot forgetting curves.")}
+          {selectedIds.length ? tx("ui.analytics.forgettingCurve.notStudied", "Selected cards have not been studied yet.") : tx("ui.analytics.forgettingCurve.searchPlaceholder", "Choose a preset in the filter to plot forgetting curves.")}
         </div>
       )}
 
       <div className="learnkit-ana-scroll-48">
-        {legendContent()}
+        {!open && legendContent()}
       </div>
 
     </div>
