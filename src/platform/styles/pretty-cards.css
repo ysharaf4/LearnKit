@@ -1207,16 +1207,34 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   box-sizing: border-box;
   font-size: inherit;
   text-align: center;
   line-height: 1.5;
-  border-radius: var(--radius-md);
-  border: 0.5px solid var(--color-base-30);
+  border-radius: var(--radius-l);
+  border: 1px solid var(--color-base-30);
   background: var(--color-base-20);
-  padding: 12px;
+  box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
+  padding: 14px 16px;
   overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+  .learnkit-pretty-card.learnkit-macro-flashcards:hover :is(.learnkit-flashcard-question, .learnkit-flashcard-answer) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px var(--background-modifier-box-shadow);
+    border-color: var(--color-base-40);
+  }
+}
+
+@media (hover: none) {
+  .learnkit-pretty-card.learnkit-macro-flashcards:active :is(.learnkit-flashcard-question, .learnkit-flashcard-answer) {
+    transform: scale(0.985);
+  }
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-body {
@@ -1320,18 +1338,48 @@ padding: 0px ;
   white-space: normal;
 }
 
-.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  width: 100%;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-base-30);
+  box-sizing: border-box;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--color-base-30);
+  color: var(--text-muted);
+  line-height: 1;
+  user-select: none;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-badge-icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.2;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   z-index: 3;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0.7;
+  pointer-events: auto;
   transition: opacity 0.2s ease-in-out;
 }
 
@@ -1343,32 +1391,16 @@ padding: 0px ;
   pointer-events: auto;
 }
 
-.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:has(.learnkit-flashcard-speak-btn) {
-  opacity: 0.8;
-  pointer-events: auto;
-}
-
-.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:has(.learnkit-flashcard-speak-btn) .learnkit-card-edit-btn {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease-in-out;
-}
-
-.learnkit-pretty-card.learnkit-macro-flashcards :is(.learnkit-flashcard-question, .learnkit-flashcard-answer):hover .learnkit-flashcard-actions:has(.learnkit-flashcard-speak-btn) .learnkit-card-edit-btn,
-.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:focus-within .learnkit-card-edit-btn {
-  opacity: 0.7;
-  pointer-events: auto;
-}
-
 @media (hover: none) {
   .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions {
     opacity: 0.85;
     pointer-events: auto;
   }
-  .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions:has(.learnkit-flashcard-speak-btn) .learnkit-card-edit-btn {
-    opacity: 0.7;
-    pointer-events: auto;
-  }
+}
+
+body:is(.is-mobile, .is-tablet) .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-actions {
+  opacity: 0.85;
+  pointer-events: auto;
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-action-btn {
@@ -1376,23 +1408,29 @@ padding: 0px ;
   background-color: transparent;
   border: none;
   border-color: transparent;
-  border-radius: 0;
+  border-radius: var(--radius-s);
   appearance: none;
   -webkit-appearance: none;
   box-shadow: none;
   outline: none;
   color: var(--text-muted);
   opacity: 1;
-  padding: 0;
+  padding: 3px 5px;
   margin: 0;
   width: auto;
   height: auto;
-  min-width: 0;
-  min-height: 0;
+  min-width: 26px;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-action-btn:hover {
+  background-color: var(--color-base-30);
+  color: var(--text-normal);
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards button.learnkit-card-edit-btn {
@@ -1582,6 +1620,80 @@ padding: 0px ;
   text-align: center;
   font-size: var(--learnkit-font-sm);
   line-height: 1.6;
+  width: 100%;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-option-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  margin: 0;
+  border-radius: var(--radius-m);
+  background: var(--color-base-25, var(--color-base-20));
+  border: 1px solid var(--color-base-30);
+  text-align: left;
+  font-size: var(--learnkit-font-sm);
+  line-height: 1.4;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-option-chip.learnkit-option-correct {
+  border-color: var(--interactive-accent);
+  background: rgba(var(--interactive-accent-rgb, 100, 150, 255), 0.12);
+  font-weight: 600;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-option-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--color-base-30);
+  color: var(--text-normal);
+  flex-shrink: 0;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-sequence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-sequence-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border-radius: var(--radius-m);
+  background: var(--color-base-25, var(--color-base-20));
+  border: 1px solid var(--color-base-30);
+  text-align: left;
+  font-size: var(--learnkit-font-sm);
 }
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-info {
@@ -1595,22 +1707,27 @@ padding: 0px ;
 
 .learnkit-pretty-card.learnkit-macro-flashcards .learnkit-flashcard-blank {
   display: inline-block;
-  border-bottom: 0.5px solid var(--text-muted);
-  white-space: nowrap;
-  color: transparent;
-  width: 50px;
+  padding: 1px 10px;
+  border-radius: var(--radius-s);
+  background: var(--color-base-30);
+  border: 1px dashed var(--color-base-40);
+  color: var(--text-muted);
+  font-weight: 600;
   vertical-align: baseline;
 }
 
 @keyframes learnkit-parent-flip {
   0% {
-    transform: rotateY(0deg);
+    transform: perspective(1000px) rotateY(0deg) scale(1);
+    box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
   }
   50% {
-    transform: rotateY(90deg);
+    transform: perspective(1000px) rotateY(90deg) scale(0.97);
+    box-shadow: 0 12px 28px var(--background-modifier-box-shadow);
   }
   100% {
-    transform: rotateY(0deg);
+    transform: perspective(1000px) rotateY(0deg) scale(1);
+    box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
   }
 }
 

@@ -3063,6 +3063,16 @@ export function buildFlashcardContentHTML(card: LearnKitCard, options: { include
     return `<div class="learnkit-flashcard-actions">${edit}${speaker}</div>`;
   };
 
+  const buildFaceHeader = (side: 'front' | 'back') => {
+    const label = side === 'front'
+      ? t(undefined, "ui.common.question", "Question")
+      : t(undefined, "ui.common.answer", "Answer");
+    const actions = actionsFor(side);
+    const flipIconSvg = `<svg class="learnkit-flashcard-badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 12 4-4 4 4"/><path d="M7 8v8a4 4 0 0 0 4 4h9"/><path d="m21 12-4 4-4-4"/><path d="M17 16V8a4 4 0 0 0-4-4H4"/></svg>`;
+
+    return `<div class="learnkit-flashcard-header"><div class="learnkit-flashcard-badge">${flipIconSvg}<span>${label}</span></div>${actions}</div>`;
+  };
+
   if (card.type === 'cloze') {
     const cq = toTextField(card.fields.CQ);
     front = buildFlashcardCloze(cq, 'front');
@@ -3098,16 +3108,20 @@ export function buildFlashcardContentHTML(card: LearnKitCard, options: { include
 
     const questionHtml = `<div class="learnkit-flashcard-question-text"${mdSourceAttr(q)}>${renderMarkdownTextWithExplicitBreaks(q)}</div>`;
     const optionsListHtml = allOptions.length
-      ? `<ul class="learnkit-flashcard-options learnkit-flashcard-options-list">${allOptions.map((opt) => `<li><span${mdSourceAttr(opt)}>${renderMarkdownLineWithClozeSpans(String(opt))}</span></li>`).join('')}</ul>`
+      ? `<div class="learnkit-flashcard-options learnkit-flashcard-options-list">${allOptions.map((opt, idx) => {
+          const letter = String.fromCharCode(65 + idx);
+          return `<div class="learnkit-flashcard-option-chip"><span class="learnkit-option-badge">${letter}</span><span${mdSourceAttr(opt)}>${renderMarkdownLineWithClozeSpans(String(opt))}</span></div>`;
+        }).join('')}</div>`
       : '';
     const backOptionsListHtml = allOptions.length
-      ? `<ul class="learnkit-flashcard-options learnkit-flashcard-options-list">${allOptions.map((opt) => {
+      ? `<div class="learnkit-flashcard-options learnkit-flashcard-options-list">${allOptions.map((opt, idx) => {
+          const letter = String.fromCharCode(65 + idx);
           const rendered = renderMarkdownLineWithClozeSpans(String(opt));
           const isCorrect = answersLower.has(opt.toLowerCase());
           return isCorrect
-            ? `<li><span class="learnkit-reading-view-cloze"><span class="learnkit-cloze-text"${mdSourceAttr(opt)}>${rendered}</span></span></li>`
-            : `<li><span${mdSourceAttr(opt)}>${rendered}</span></li>`;
-        }).join('')}</ul>`
+            ? `<div class="learnkit-flashcard-option-chip learnkit-option-correct"><span class="learnkit-option-badge">${letter}</span><span class="learnkit-reading-view-cloze"><span class="learnkit-cloze-text"${mdSourceAttr(opt)}>${rendered}</span></span></div>`
+            : `<div class="learnkit-flashcard-option-chip"><span class="learnkit-option-badge">${letter}</span><span${mdSourceAttr(opt)}>${rendered}</span></div>`;
+        }).join('')}</div>`
       : '';
 
     front = `${questionHtml}${optionsListHtml}`;
@@ -3121,8 +3135,8 @@ export function buildFlashcardContentHTML(card: LearnKitCard, options: { include
       [shuffledSteps[i], shuffledSteps[j]] = [shuffledSteps[j], shuffledSteps[i]];
     }
     const oqQuestionHtml = `<div class="learnkit-flashcard-question-text"${mdSourceAttr(q)}>${renderMarkdownTextWithExplicitBreaks(q)}</div>`;
-    front = `${oqQuestionHtml}${shuffledSteps.length ? `<ul class="learnkit-flashcard-options learnkit-flashcard-options-list">${shuffledSteps.map((s) => `<li><span${mdSourceAttr(s)}>${renderMarkdownLineWithClozeSpans(s)}</span></li>`).join('')}</ul>` : ''}`;
-    back = `${oqQuestionHtml}<ol class="learnkit-flashcard-sequence-list">${steps.map((s) => `<li><span${mdSourceAttr(s)}>${renderMarkdownLineWithClozeSpans(s)}</span></li>`).join('')}</ol>`;
+    front = `${oqQuestionHtml}${shuffledSteps.length ? `<div class="learnkit-flashcard-options learnkit-flashcard-options-list">${shuffledSteps.map((s) => `<div class="learnkit-flashcard-option-chip"><span${mdSourceAttr(s)}>${renderMarkdownLineWithClozeSpans(s)}</span></div>`).join('')}</div>` : ''}`;
+    back = `${oqQuestionHtml}<div class="learnkit-flashcard-sequence-list">${steps.map((s, idx) => `<div class="learnkit-flashcard-sequence-row"><span class="learnkit-option-badge">${idx + 1}</span><span${mdSourceAttr(s)}>${renderMarkdownLineWithClozeSpans(s)}</span></div>`).join('')}</div>`;
   } else if (card.type === 'combo') {
     const qText = toTextField(card.fields.Q);
     const aText = toTextField(card.fields.A);
@@ -3143,8 +3157,8 @@ export function buildFlashcardContentHTML(card: LearnKitCard, options: { include
     : 'learnkit-flashcard-body';
 
   return `
-    <div class="learnkit-flashcard-question">${actionsFor('front')}<div class="${frontBodyClass}">${front}</div></div>
-    <div class="learnkit-flashcard-answer" hidden>${actionsFor('back')}<div class="${backBodyClass}">${back}</div></div>
+    <div class="learnkit-flashcard-question">${buildFaceHeader('front')}<div class="${frontBodyClass}">${front}</div></div>
+    <div class="learnkit-flashcard-answer" hidden>${buildFaceHeader('back')}<div class="${backBodyClass}">${back}</div></div>
   `;
 }
 
