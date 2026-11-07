@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@astrojs/starlight": "^0.38.5",
+    "@rollup/rollup-darwin-arm64": "^4.68.0",
     "@tailwindcss/cli": "^4.2.1",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.15",
