@@ -1468,7 +1468,7 @@ export class CardReviewPresenter {
         label: tx("ui.widget.grade.again", "Again"),
         subtitle: getSubtitle("again"),
         title: tx("ui.widget.grade.againTooltip", "Not recalled easily (1)"),
-        className: "btn-destructive learnkit-btn-again",
+        className: "btn learnkit-btn-again",
         onClick: () => void this.gradeCurrentRating("again"),
         kbd: "1",
       });
