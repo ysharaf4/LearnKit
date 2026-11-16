@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-16T15:10:30Z",
+  "title": "Design System: LearnKit",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Electric Sprout",
+        "canonical": "#5ea500",
+        "tonalRamp": [
+          "#1a2e00",
+          "#2e5200",
+          "#447500",
+          "#5ea500",
+          "#7ac700",
+          "#9ae600",
+          "#c8f566",
+          "#f7fee7"
+        ]
+      },
+      "ring": {
+        "role": "accent",
+        "displayName": "Spring Neon",
+        "canonical": "#9ae600",
+        "tonalRamp": [
+          "#223800",
+          "#3a5c00",
+          "#548000",
+          "#70aa00",
+          "#9ae600",
+          "#b8f244",
+          "#d9fa8a",
+          "#f5fee6"
+        ]
+      },
+      "rating-again": {
+        "role": "destructive",
+        "displayName": "Lapse Crimson",
+        "canonical": "#ef4444",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#b91c1c",
+          "#ef4444",
+          "#f87171",
+          "#fca5a5",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "rating-hard": {
+        "role": "warning",
+        "displayName": "Amber Sun",
+        "canonical": "#eab308",
+        "tonalRamp": [
+          "#422006",
+          "#713f12",
+          "#a16207",
+          "#eab308",
+          "#facc15",
+          "#fde047",
+          "#fef08a",
+          "#fefce8"
+        ]
+      },
+      "rating-good": {
+        "role": "success",
+        "displayName": "Vibrant Clover",
+        "canonical": "#22c55e",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#15803d",
+          "#22c55e",
+          "#4ade80",
+          "#86efac",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "rating-easy": {
+        "role": "neutral",
+        "displayName": "Slate Obsidian",
+        "canonical": "#000000",
+        "tonalRamp": [
+          "#000000",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#f4f4f5"
+        ]
+      },
+      "destructive": {
+        "role": "destructive",
+        "displayName": "Ruby Flare",
+        "canonical": "#e7000b",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#e7000b",
+          "#f87171",
+          "#fca5a5",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Base Canvas",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#52525b",
+          "#a1a1aa",
+          "#e4e4e7",
+          "#f4f4f5",
+          "#ffffff"
+        ]
+      },
+      "text-normal": {
+        "role": "neutral",
+        "displayName": "Obsidian Ink",
+        "canonical": "#111111",
+        "tonalRamp": [
+          "#000000",
+          "#111111",
+          "#222222",
+          "#444444",
+          "#666666",
+          "#888888",
+          "#cccccc",
+          "#f5f5f5"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "View and modal headline titles." },
+      "headline": { "displayName": "Headline", "purpose": "Study deck headers and section dividers." },
+      "title": { "displayName": "Title", "purpose": "Card question prompts and popup headings." },
+      "body": { "displayName": "Body", "purpose": "Main active recall note text and flashcard content." },
+      "label": { "displayName": "Label", "purpose": "Keyboard shortcut badges, keycaps, and FSRS interval tags." }
+    },
+    "shadows": [
+      {
+        "name": "modal-depth",
+        "value": "0 16px 48px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.12)",
+        "purpose": "Floating card editor modals and exam dialog sheets."
+      },
+      {
+        "name": "popover-ambient",
+        "value": "0 4px 16px rgba(0, 0, 0, 0.12)",
+        "purpose": "Dropdowns, tooltips, and contextual action menus."
+      },
+      {
+        "name": "popover-subtle",
+        "value": "0 4px 12px rgba(0, 0, 0, 0.08)",
+        "purpose": "Compact inline hover flashcard previews."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default easing for button hover transitions and card flipping."
+      },
+      {
+        "name": "duration-quick",
+        "value": "0.15s",
+        "purpose": "Color and border transition duration for interactive controls."
+      }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "640px" },
+      { "name": "desktop", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Icon Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Standard toolbar action and navigation button with hairline border and zero resting shadow.",
+      "html": "<button class=\"ds-btn-icon-outline\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg><span>Review</span></button>",
+      "css": ".ds-btn-icon-outline { background: transparent; color: #111111; border: 0.5px solid rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 0 12px; height: 36px; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; } .ds-btn-icon-outline:hover { background: rgba(0, 0, 0, 0.06); border-color: rgba(0, 0, 0, 0.35); } .ds-btn-icon-outline:focus-visible { outline: 2px solid #9ae600; outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Action Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Vibrant Electric Sprout button for primary view triggers and active study transitions.",
+      "html": "<button class=\"ds-btn-primary\">Start Session</button>",
+      "css": ".ds-btn-primary { background: #5ea500; color: #f7fee7; border: none; border-radius: 12px; height: 36px; min-height: 36px; padding: 0 16px; font-size: 0.95rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s, transform 0.1s; } .ds-btn-primary:hover { background: #447500; } .ds-btn-primary:focus-visible { outline: 2px solid #9ae600; outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.98); }"
+    },
+    {
+      "name": "FSRS Rating Button (Good)",
+      "kind": "button",
+      "refersTo": "rating-button-good",
+      "description": "Spaced repetition rating button with semantic color-mix background tint and keyboard keycap badge.",
+      "html": "<button class=\"ds-btn-rating-good\"><span class=\"ds-rating-label\">Good</span><span class=\"ds-rating-keycap\">3</span></button>",
+      "css": ".ds-btn-rating-good { background: rgba(34, 197, 94, 0.16); color: #15803d; border: 0.5px solid rgba(34, 197, 94, 0.45); border-radius: 8px; height: 36px; min-height: 36px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: background 0.15s, border-color 0.15s; } .ds-btn-rating-good:hover { background: rgba(34, 197, 94, 0.24); border-color: rgba(34, 197, 94, 0.6); } .ds-rating-keycap { background: rgba(34, 197, 94, 0.25); color: #14532d; border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; font-family: monospace; font-weight: 600; }"
+    },
+    {
+      "name": "Study Session Card",
+      "kind": "card",
+      "refersTo": "card-session",
+      "description": "Translucent flashcard study surface floating above the vault note canvas with hairline borders.",
+      "html": "<div class=\"ds-session-card\"><div class=\"ds-card-header\"><span class=\"ds-card-title\">Active Recall Prompt</span></div><div class=\"ds-card-body\"><p>What does FSRS stand for in modern spaced repetition?</p></div></div>",
+      "css": ".ds-session-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); border: 0.5px solid rgba(0, 0, 0, 0.15); border-radius: 16px; padding: 1.2rem; box-shadow: none; transition: background 0.2s ease; } .ds-card-header { font-size: 0.85rem; color: #666666; font-weight: 500; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; } .ds-card-body p { font-size: 1.125rem; line-height: 1.5; color: #111111; margin: 0; }"
+    },
+    {
+      "name": "Tag Pill",
+      "kind": "chip",
+      "refersTo": "chip-tag",
+      "description": "Compact fully rounded pill badge for categorizing decks and filtering flashcard tags.",
+      "html": "<div class=\"ds-tag-pill\"><span>#neuroscience</span></div>",
+      "css": ".ds-tag-pill { display: inline-flex; align-items: center; border-radius: 9999px; height: 22px; padding: 0 8px; font-size: 0.75rem; font-weight: 500; background: rgba(0, 0, 0, 0.06); color: #444444; border: 0.5px solid rgba(0, 0, 0, 0.1); white-space: nowrap; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Vault Glasswork",
+    "overview": "LearnKit integrates active recall directly into the Obsidian knowledge base. Rather than feeling like an external application bolted into a side pane, LearnKit lives as a set of precision study instruments crafted from translucent glass surfaces, seamlessly floating over the user's personal vault notes. The aesthetic reflects academic rigor, calm focus, and mathematical pacing without the noise of gamified distractions or clashing visual metaphors.\n\nThe system is defined by crisp typographic rhythm, high-contrast readability, and respectful alignment with Obsidian's theme architecture. Surfaces use layered color-mix values and subtle backdrop blur (var(--lk-backdrop-blur)) that adopt the host's light or dark mode palette automatically. Primary energy concentrates in a distinct vibrant sprout-lime accent for focus states and system brand marks, while study session cards emphasize the flashcard content with zero visual friction.",
+    "keyCharacteristics": [
+      "Host Theme Symbiosis: Inherits Obsidian's active theme tokens (--color-base-*, --background-primary, --text-normal) rather than imposing rigid hardcoded backgrounds.",
+      "Glass Transparency & Restraint: Uses translucent surfaces with calibrated fallback blur instead of opaque modal slabs.",
+      "Flat-at-Rest Controls: Buttons and inputs eliminate resting drop-shadows to preserve a clean, calm reading canvas.",
+      "Semantic Spaced Repetition Palette: FSRS review ratings (Again, Hard, Good, Easy) use instantly recognizable, accessible color coding balanced with surface tinting."
+    ],
+    "rules": [
+      {
+        "name": "The Host Harmony Rule",
+        "body": "LearnKit surfaces must inherit from Obsidian's host theme tokens (--color-base-00 to --color-base-100, --background-primary, --text-normal). Never force an opaque hardcoded background or override user accent settings.",
+        "section": "colors"
+      },
+      {
+        "name": "The Rating Tint Rule",
+        "body": "Review rating buttons mix semantic rating hues at 16% tint into the surface background at rest (24% on hover), reserving high-saturation solid fills for badge pills and hotkey keycaps.",
+        "section": "colors"
+      },
+      {
+        "name": "The Monospace Code Isolation Rule",
+        "body": "Inline card code and cloze syntax must always render in monospace (var(--font-monospace)), with compact padding (0.2rem 0.4rem) and a subtle tinted background (var(--color-base-20)) to distinguish syntax anchors from surrounding markdown prose.",
+        "section": "typography"
+      },
+      {
+        "name": "The Zero-Shadow Button Rule",
+        "body": "Buttons, inputs, and form controls have box-shadow: none at rest. Shadows belong exclusively to floating overlays, modals, and dropdown popovers.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Backdrop Blur Fallback Rule",
+        "body": "Surface blur must always be routed through var(--lk-backdrop-blur) or Obsidian's --blur-s/m/l with a fallback, never hardcoding backdrop-filter: blur(Npx). This ensures translucency is cleanly disabled on systems or themes where repainting causes visual artifacts.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do inherit colors from Obsidian's host theme tokens (--color-base-00 through --color-base-100, --background-primary, --text-normal).",
+      "Do route all backdrop blur declarations through var(--lk-backdrop-blur) or Obsidian's --blur-s/m/l with a fallback.",
+      "Do maintain a uniform 36px minimum height for all interactive buttons and toolbar controls.",
+      "Do keep buttons and cards flat at rest with box-shadow: none.",
+      "Do construct SVGs and elements using standard DOM methods (document.createElementNS, createEl) to comply with Obsidian security invariants."
+    ],
+    "donts": [
+      "Don't use innerHTML or outerHTML under any circumstances (strictly prohibited by Obsidian review standards).",
+      "Don't write !important declarations in stylesheets.",
+      "Don't hardcode static background colors (like #ffffff or #000000) on cards or containers—always use dynamic theme tokens.",
+      "Don't add drop-shadows to resting buttons or inputs.",
+      "Don't use hardcoded backdrop-filter: blur(10px) directly without variable indirection."
+    ]
+  }
+}
