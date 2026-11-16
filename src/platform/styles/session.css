@@ -1718,10 +1718,12 @@ body.is-tablet .learnkit .lk-session-card > footer.learnkit-session-study-dock :
   line-height: 1.05;
 }
 
-.learnkit .learnkit-grade-btn-subtitle {
+.learnkit :is(.learnkit-grade-btn-subtitle, .learnkit-btn-subtitle) {
   font-size: 0.78em;
   opacity: 0.9;
   font-weight: 500;
+  font-family: var(--font-monospace, monospace);
+  letter-spacing: -0.01em;
 }
 
 /* Gatekeeper uses the same visual language as reviewer, but with tighter vertical rhythm. */

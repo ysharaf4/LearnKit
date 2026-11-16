@@ -262,4 +262,73 @@ describe("CardReviewPresenter", () => {
 
     presenter.destroy();
   });
+
+  it("renders live FSRS schedule interval previews and tooltips on rating buttons when showGradeIntervals is enabled", () => {
+    const session = StudySession.start({
+      scope: { type: "vault", key: "all", name: "Vault" },
+      store: mockStore,
+      cards: dummyCards,
+    });
+
+    const presenter = new CardReviewPresenter({
+      container,
+      session,
+      showGradeIntervals: true,
+      schedulingSettings: {
+        algorithm: "fsrs",
+        fsrs: {
+          requestRetention: 0.9,
+          maximumInterval: 36500,
+          w: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61],
+          enableFuzz: false,
+        },
+        sm2: {
+          startingEase: 2.5,
+          easyBonus: 1.3,
+          intervalModifier: 1.0,
+          hardIntervalFactor: 1.2,
+          minimumInterval: 1,
+          maximumInterval: 36500,
+        },
+      },
+      getCardStateForPreview: (id, now) => mockStore.ensureState(id, now),
+      fourButtonMode: true,
+    });
+    presenter.mount();
+
+    // Reveal the answer to show rating buttons
+    presenter.revealAnswer();
+
+    const againBtn = container.querySelector(".learnkit-btn-again") as HTMLButtonElement;
+    const hardBtn = container.querySelector(".learnkit-btn-hard") as HTMLButtonElement;
+    const goodBtn = container.querySelector(".learnkit-btn-good") as HTMLButtonElement;
+    const easyBtn = container.querySelector(".learnkit-btn-easy") as HTMLButtonElement;
+
+    expect(againBtn).not.toBeNull();
+    expect(hardBtn).not.toBeNull();
+    expect(goodBtn).not.toBeNull();
+    expect(easyBtn).not.toBeNull();
+
+    // Check subtitle presence and contents
+    const againSub = againBtn.querySelector(".learnkit-btn-subtitle");
+    const hardSub = hardBtn.querySelector(".learnkit-btn-subtitle");
+    const goodSub = goodBtn.querySelector(".learnkit-btn-subtitle");
+    const easySub = easyBtn.querySelector(".learnkit-btn-subtitle");
+
+    expect(againSub).not.toBeNull();
+    expect(hardSub).not.toBeNull();
+    expect(goodSub).not.toBeNull();
+    expect(easySub).not.toBeNull();
+
+    expect(againSub?.textContent).toBeTruthy();
+    expect(goodSub?.textContent).toBeTruthy();
+
+    // Verify accessible tooltips explaining grading criteria
+    expect(againBtn.title).toBe("Not recalled easily (1)");
+    expect(hardBtn.title).toBe("Recalled with difficulty (2)");
+    expect(goodBtn.title).toBe("Recalled with effort (3)");
+    expect(easyBtn.title).toBe("Recalled easily (4)");
+
+    presenter.destroy();
+  });
 });

@@ -39,7 +39,7 @@ import {
 import { hydrateCircleFlagsInElement, processCircleFlagsInMarkdown } from "../../platform/flags/flag-tokens";
 import { t } from "../../platform/translations/translator";
 import { getRatingIntervalPreview } from "../../platform/core/grade-intervals";
-import type { CardState, SchedulerSettings } from "../../platform/types/scheduler";
+import type { CardState, SchedulerSettings, ReviewRating } from "../../platform/types/scheduler";
 import { makeEl } from "../../platform/core/dom-factory";
 import { StudySession } from "../../engine/study-session/study-session";
 import { isSpaceKey } from "./key-actions";
@@ -154,10 +154,11 @@ function questionNumberWithinNote(session: StudySession | Session, card: CardRec
   return idx >= 0 ? idx + 1 : 1;
 }
 
-function fallbackQuestionTitle(session: StudySession | Session, card: CardRecord): string {
+function fallbackQuestionTitle(session: StudySession | Session, card: CardRecord, lang?: string): string {
   const page = pageNameFromSourcePath(String(card.sourceNotePath || ""));
-  const questionWord = toQuestionOrdinalWord(questionNumberWithinNote(session, card));
-  return `${page} \u2013 Question ${questionWord}`;
+  const num = questionNumberWithinNote(session, card);
+  const template = t(lang, "ui.reviewer.prompt.fallbackQuestionNum", "{page} \u2013 Question {number}");
+  return template.replace("{page}", page).replace("{number}", String(num));
 }
 
 function extractInfoField(card: CardRecord): string | null {
@@ -210,9 +211,9 @@ function makeTextButton(opts: {
 
   const hasSubtitle = typeof opts.subtitle === "string" && opts.subtitle.trim().length > 0;
   if (hasSubtitle) {
-    btn.classList.add("learnkit-btn-with-subtitle");
+    btn.classList.add("learnkit-btn-with-subtitle", "learnkit-grade-btn-with-interval");
     const stack = makeEl("span");
-    stack.className = "learnkit-btn-content-stack";
+    stack.className = "learnkit-btn-content-stack learnkit-grade-btn-label-wrap";
 
     const main = makeEl("span");
     main.className = "learnkit-btn-main-label";
@@ -220,7 +221,7 @@ function makeTextButton(opts: {
     stack.appendChild(main);
 
     const sub = makeEl("span");
-    sub.className = "learnkit-btn-subtitle";
+    sub.className = "learnkit-btn-subtitle learnkit-grade-btn-subtitle";
     sub.textContent = opts.subtitle!;
     stack.appendChild(sub);
 
@@ -266,17 +267,17 @@ function getHotspotTargetCount(card: CardRecord): number {
   return Number.isFinite(rawCount) && rawCount > 0 ? Math.floor(rawCount) : 1;
 }
 
-function buildHotspotQuestionPrompt(card: CardRecord): string {
+function buildHotspotQuestionPrompt(card: CardRecord, lang?: string): string {
   const interactionMode = getHotspotInteractionModeFromCard(card);
   const targetCount = getHotspotTargetCount(card);
   if (interactionMode === "drag-drop") {
     return targetCount > 1
-      ? `Drag and drop all ${targetCount} markers onto their locations, then reveal the answer.`
-      : "Drag and drop the marker onto its location, then reveal the answer.";
+      ? t(lang, "ui.reviewer.prompt.hotspotDragMultiple", "Drag and drop all {count} markers onto their locations, then reveal the answer.").replace("{count}", String(targetCount))
+      : t(lang, "ui.reviewer.prompt.hotspotDragSingle", "Drag and drop the marker onto its location, then reveal the answer.");
   }
   return targetCount > 1
-    ? `Click all ${targetCount} target regions on the image, then reveal the answer.`
-    : "Click the target region on the image, then reveal the answer.";
+    ? t(lang, "ui.reviewer.prompt.hotspotClickMultiple", "Click all {count} target regions on the image, then reveal the answer.").replace("{count}", String(targetCount))
+    : t(lang, "ui.reviewer.prompt.hotspotClickSingle", "Click the target region on the image, then reveal the answer.");
 }
 
 function isPermutation(arr: unknown, n: number): boolean {
@@ -1044,7 +1045,7 @@ export class CardReviewPresenter {
     const TYPE_LABELS = new Set(["basic", "basic (reversed)", "cloze", "multiple choice", "image occlusion", "ordered question", "flashcard"]);
     if (TYPE_LABELS.has(displayTitle.toLowerCase())) displayTitle = "";
 
-    const titleText = (displayTitle || fallbackQuestionTitle(this.session, card) || "").trim();
+    const titleText = (displayTitle || fallbackQuestionTitle(this.session, card, this.options.interfaceLanguage) || "").trim();
     if (!titleText) {
       header.classList.add("learnkit-session-topbar-hidden");
     }
@@ -1440,12 +1441,33 @@ export class CardReviewPresenter {
       center.appendChild(continueBtn);
     } else {
       // Rating buttons: Again, Hard, Good, Easy
+      const previewNow = Date.now();
+      const showIntervals = !!this.options.showGradeIntervals;
+      const previewState = showIntervals && this.options.getCardStateForPreview && card
+        ? this.options.getCardStateForPreview(String(card.id), previewNow)
+        : null;
+      const scheduling = this.options.schedulingSettings;
+      const getSubtitle = (rating: ReviewRating): string | undefined => {
+        if (!previewState || !scheduling || !showIntervals) return undefined;
+        return (
+          getRatingIntervalPreview({
+            state: previewState,
+            rating,
+            now: previewNow,
+            scheduling,
+            locale: this.options.interfaceLanguage,
+          }) ?? undefined
+        );
+      };
+
       const gradeGroup = makeEl("div");
       gradeGroup.className = "learnkit-session-study-dock-grade-group";
       center.appendChild(gradeGroup);
 
       const againBtn = makeTextButton({
         label: tx("ui.widget.grade.again", "Again"),
+        subtitle: getSubtitle("again"),
+        title: tx("ui.widget.grade.againTooltip", "Not recalled easily (1)"),
         className: "btn-destructive learnkit-btn-again",
         onClick: () => void this.gradeCurrentRating("again"),
         kbd: "1",
@@ -1455,6 +1477,8 @@ export class CardReviewPresenter {
       if (four) {
         const hardBtn = makeTextButton({
           label: tx("ui.widget.grade.hard", "Hard"),
+          subtitle: getSubtitle("hard"),
+          title: tx("ui.widget.grade.hardTooltip", "Recalled with difficulty (2)"),
           className: "btn learnkit-btn-hard",
           onClick: () => void this.gradeCurrentRating("hard"),
           kbd: "2",
@@ -1463,6 +1487,8 @@ export class CardReviewPresenter {
 
         const goodBtn = makeTextButton({
           label: tx("ui.widget.grade.good", "Good"),
+          subtitle: getSubtitle("good"),
+          title: tx("ui.widget.grade.goodTooltipFour", "Recalled with effort (3)"),
           className: "btn learnkit-btn-good",
           onClick: () => void this.gradeCurrentRating("good"),
           kbd: "3",
@@ -1471,6 +1497,8 @@ export class CardReviewPresenter {
 
         const easyBtn = makeTextButton({
           label: tx("ui.widget.grade.easy", "Easy"),
+          subtitle: getSubtitle("easy"),
+          title: tx("ui.widget.grade.easyTooltip", "Recalled easily (4)"),
           className: "btn learnkit-btn-easy",
           onClick: () => void this.gradeCurrentRating("easy"),
           kbd: "4",
@@ -1479,6 +1507,8 @@ export class CardReviewPresenter {
       } else {
         const goodBtn = makeTextButton({
           label: tx("ui.widget.grade.good", "Good"),
+          subtitle: getSubtitle("good"),
+          title: tx("ui.widget.grade.goodTooltipTwo", "Recalled easily (2)"),
           className: "btn learnkit-btn-good",
           onClick: () => void this.gradeCurrentRating("good"),
           kbd: "2",
@@ -1577,7 +1607,7 @@ export class CardReviewPresenter {
 // Compatibility Adapter (renderSessionMode)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function renderSessionMode(args: any): void {
+export function renderSessionMode(args: unknown): void {
   const presenter = new CardReviewPresenter({
     container: args.container,
     session: args.session,
