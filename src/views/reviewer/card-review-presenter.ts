@@ -626,6 +626,7 @@ export class CardReviewPresenter {
   // Timing
   private cardStartTime: number = Date.now();
   private sessionStartTime: number = Date.now();
+  private answerRevealedAt: number = 0;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(options: CardReviewPresenterOptions) {
@@ -660,6 +661,7 @@ export class CardReviewPresenter {
   public updateSession(session: StudySession | Session): void {
     this.session = session;
     this.showAnswer = false;
+    this.answerRevealedAt = 0;
     this.render();
   }
 
@@ -670,6 +672,7 @@ export class CardReviewPresenter {
   public revealAnswer(): void {
     if (this.showAnswer) return;
     this.showAnswer = true;
+    this.answerRevealedAt = Date.now();
     this.options.setShowAnswer?.(true);
 
     const card = this.currentCard;
@@ -742,6 +745,7 @@ export class CardReviewPresenter {
 
     this.cardStartTime = Date.now();
     this.showAnswer = false;
+    this.answerRevealedAt = 0;
     this.options.setShowAnswer?.(false);
 
     if (!hasNext || !this.currentCard) {
@@ -784,6 +788,7 @@ export class CardReviewPresenter {
 
     this.cardStartTime = Date.now();
     this.showAnswer = false;
+    this.answerRevealedAt = 0;
     this.options.setShowAnswer?.(false);
 
     if (!this.currentCard) {
@@ -980,6 +985,13 @@ export class CardReviewPresenter {
         return true;
       }
       if (isAdvance) {
+        // Spacebar double-tap guard: require a brief 180ms cooldown after reveal
+        // before Space/Enter is accepted for grading, preventing accidental double-tap grades.
+        if (Date.now() - this.answerRevealedAt < 1500) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          return true;
+        }
         ev.preventDefault();
         ev.stopPropagation();
         void this.gradeCurrentRating("good");

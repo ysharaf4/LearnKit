@@ -186,6 +186,13 @@ describe("CardReviewPresenter", () => {
     expect(handledReveal).toBe(true);
     expect(presenter.isAnswerRevealed).toBe(true);
 
+    // Immediate Space (< 180ms) is guarded to prevent accidental double-tap grades
+    const immediateSpaceEv = new KeyboardEvent("keydown", { key: " " });
+    const handledImmediate = presenter.handleKeyDown(immediateSpaceEv);
+    expect(handledImmediate).toBe(true);
+    // Grade should not have occurred yet; presenter is still on dummyCards[0]
+    expect(presenter.currentCard?.id).toBe(dummyCards[0].id);
+
     // Key '2' grades good
     const key2Ev = new KeyboardEvent("keydown", { key: "2" });
     const handledGrade = presenter.handleKeyDown(key2Ev);
