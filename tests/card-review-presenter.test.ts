@@ -402,4 +402,80 @@ describe("CardReviewPresenter", () => {
 
     presenter.destroy();
   });
+
+  it("renders celebratory Session Summary Glass Card when review queue completes", async () => {
+    const onStartPractice = vi.fn();
+    const session = StudySession.start({
+      scope: { type: "vault", key: "all", name: "Vault" },
+      store: mockStore,
+      cards: [dummyCards[0]],
+    });
+
+    const presenter = new CardReviewPresenter({
+      container,
+      session,
+      onStartPractice,
+    });
+    presenter.mount();
+
+    // Review the single card
+    presenter.revealAnswer();
+    await presenter.gradeCurrentRating("good");
+
+    // Queue exhausted -> renders completion state
+    const summary = container.querySelector(".learnkit-session-summary-wrap");
+    expect(summary).not.toBeNull();
+
+    // Headline confirms session complete
+    const headline = container.querySelector(".learnkit-session-summary-headline");
+    expect(headline?.textContent).toBe("Session Complete!");
+
+    // Metric tiles grid
+    const tiles = container.querySelectorAll(".learnkit-session-summary-tile");
+    expect(tiles.length).toBe(3);
+
+    const values = Array.from(tiles).map((t) => t.querySelector(".learnkit-session-summary-tile-val")?.textContent);
+    expect(values[0]).toBe("1"); // 1 card reviewed
+    expect(values[1]).toBe("100%"); // 100% retention ("good")
+
+    // Dock has Return to Decks and Practice More
+    const dock = container.querySelector("footer.learnkit-session-study-dock");
+    expect(dock?.textContent).toContain("Return to Decks");
+    expect(dock?.textContent).toContain("Practice More");
+
+    // Pressing 'P' triggers practice
+    const pEv = new KeyboardEvent("keydown", { key: "p" });
+    presenter.handleKeyDown(pEv);
+    expect(onStartPractice).toHaveBeenCalledOnce();
+
+    presenter.destroy();
+  });
+
+  it("renders serene all caught up empty state when deck has no due cards initially", () => {
+    const onStartPractice = vi.fn();
+    const session = StudySession.start({
+      scope: { type: "vault", key: "all", name: "Vault" },
+      store: mockStore,
+      cards: [],
+    });
+
+    const presenter = new CardReviewPresenter({
+      container,
+      session,
+      onStartPractice,
+    });
+    presenter.mount();
+
+    const summary = container.querySelector(".learnkit-session-summary-wrap");
+    expect(summary).not.toBeNull();
+
+    const headline = container.querySelector(".learnkit-session-summary-headline");
+    expect(headline?.textContent).toBe("All Caught Up!");
+
+    const dock = container.querySelector("footer.learnkit-session-study-dock");
+    expect(dock?.textContent).toContain("Return to Decks");
+    expect(dock?.textContent).toContain("Start Practice");
+
+    presenter.destroy();
+  });
 });

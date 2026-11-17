@@ -299,6 +299,15 @@ function readOqOrderFromStepList(root: ParentNode, expectedLength: number): numb
   return isPermutation(domOrder, expectedLength) ? domOrder : null;
 }
 
+function formatStudyDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds}s`;
+  if (seconds === 0) return `${minutes}m`;
+  return `${minutes}m ${seconds}s`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Header Menu (More-Menu Dropdown)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -871,11 +880,26 @@ export class CardReviewPresenter {
 
   public handleKeyDown(ev: KeyboardEvent): boolean {
     const card = this.currentCard;
-    if (!card) return false;
 
     // Do not intercept input when typing inside textareas or inputs
     const target = ev.target as HTMLElement | null;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+      return false;
+    }
+
+    if (!card) {
+      if (ev.key.toLowerCase() === "q" && !ev.metaKey && !ev.ctrlKey) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        this.options.onBackToDecks?.();
+        return true;
+      }
+      if (ev.key.toLowerCase() === "p" && !ev.metaKey && !ev.ctrlKey && this.options.onStartPractice) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        this.options.onStartPractice();
+        return true;
+      }
       return false;
     }
 
@@ -1160,52 +1184,167 @@ export class CardReviewPresenter {
     const tx = (token: string, fallback: string) => t(this.options.interfaceLanguage, token, fallback);
     const isPractice = !!this.options.practiceMode;
 
+    const session = this.session instanceof StudySession ? this.session : null;
+    const gradedEntries = session && session.graded ? Object.values(session.graded).filter((x): x is NonNullable<typeof x> => !!x) : [];
+    const reviewedCount = gradedEntries.length;
+    const hasReviewed = reviewedCount > 0;
+
+    // Header Topbar
     const header = makeEl("header");
     header.className = "learnkit-session-topbar";
     wrap.appendChild(header);
+
+    const navLeft = makeEl("div");
+    navLeft.className = "learnkit-session-topbar-left";
+    header.appendChild(navLeft);
+
+    const backBtn = makeTextButton({
+      label: tx("ui.reviewer.session.returnToDecks", "Decks"),
+      className: "learnkit-btn-toolbar learnkit-btn-back",
+      onClick: () => this.options.onBackToDecks?.(),
+      kbd: "Q",
+      icon: "arrow-left",
+      title: `${tx("ui.reviewer.session.returnToDecks", "Return to Decks")} (Q)`,
+    });
+    navLeft.appendChild(backBtn);
+
+    const titleCenter = makeEl("div");
+    titleCenter.className = "learnkit-session-topbar-center";
+    header.appendChild(titleCenter);
 
     const titleWrap = makeEl("div");
     titleWrap.className = "learnkit-session-topbar-title learnkit-question-title";
     titleWrap.textContent = isPractice
       ? tx("ui.reviewer.session.practiceComplete", "Practice complete")
-      : tx("ui.reviewer.session.noCardsDue", "No cards are due");
-    header.appendChild(titleWrap);
+      : hasReviewed
+        ? tx("ui.widget.sessionComplete", "Session Complete!")
+        : tx("ui.reviewer.session.noCardsDue", "No cards are due");
+    titleCenter.appendChild(titleWrap);
 
+    const navRight = makeEl("div");
+    navRight.className = "learnkit-session-topbar-right learnkit-session-topbar-actions";
+    header.appendChild(navRight);
+
+    // Section Content
     const section = makeEl("section");
     section.className = "flex flex-col gap-3 learnkit-session-practice-prompt text-center";
-
-    const d1 = makeEl("div");
-    d1.className = "text-base";
-    d1.textContent = isPractice
-      ? tx("ui.reviewer.session.practiceSessionComplete", "Practice session complete")
-      : tx("ui.reviewer.session.askStartPractice", "Would you like to start a practice session?");
-    section.appendChild(d1);
-
-    const d2 = makeEl("div");
-    d2.className = "text-sm text-muted-foreground";
-    d2.textContent = isPractice
-      ? tx("ui.reviewer.session.practiceCompleteDescription", "This was a practice session. Scheduling was not changed.")
-      : tx("ui.reviewer.session.practiceModeDescription", "Practice session reviews all cards in this deck without affecting scheduling.");
-    section.appendChild(d2);
     wrap.appendChild(section);
 
-    const footer = makeEl("footer");
-    footer.className = "learnkit-session-study-dock flex justify-center gap-3";
+    const summaryWrap = makeEl("div");
+    summaryWrap.className = "learnkit-session-summary-wrap";
+    section.appendChild(summaryWrap);
 
-    const backBtn = makeTextButton({
+    if (hasReviewed) {
+      // ── Celebratory Session Summary Glass Card ──
+      const badge = makeEl("div");
+      badge.className = "learnkit-session-summary-badge";
+      const icon = makeEl("span");
+      setIcon(icon, "sparkles");
+      queryFirst(icon, "svg")?.setAttribute("width", "24");
+      queryFirst(icon, "svg")?.setAttribute("height", "24");
+      badge.appendChild(icon);
+      summaryWrap.appendChild(badge);
+
+      const headline = makeEl("h2");
+      headline.className = "learnkit-session-summary-headline";
+      headline.textContent = tx("ui.widget.sessionComplete", "Session Complete!");
+      summaryWrap.appendChild(headline);
+
+      const subtext = makeEl("p");
+      subtext.className = "learnkit-session-summary-subtext";
+      subtext.textContent = isPractice
+        ? tx("ui.reviewer.session.practiceCompleteDescription", "Practice session complete. Scheduling was not changed.")
+        : tx("ui.reviewer.summary.celebrationSubtext", "Outstanding effort! All due cards have been scheduled.");
+      summaryWrap.appendChild(subtext);
+
+      // Metric Tiles Grid
+      const grid = makeEl("div");
+      grid.className = "learnkit-session-summary-grid";
+      summaryWrap.appendChild(grid);
+
+      // 1. Cards Reviewed
+      const tile1 = makeEl("div");
+      tile1.className = "learnkit-session-summary-tile";
+      const val1 = makeEl("span");
+      val1.className = "learnkit-session-summary-tile-val";
+      val1.textContent = String(reviewedCount);
+      const lbl1 = makeEl("span");
+      lbl1.className = "learnkit-session-summary-tile-lbl";
+      lbl1.textContent = tx("ui.reviewer.summary.cardsReviewed", "Cards Reviewed");
+      tile1.appendChild(val1);
+      tile1.appendChild(lbl1);
+      grid.appendChild(tile1);
+
+      // 2. Retention Rate
+      const successfulRecalls = gradedEntries.filter((g) => g.rating !== "again").length;
+      const retentionPercent = Math.round((successfulRecalls / reviewedCount) * 100);
+      const tile2 = makeEl("div");
+      tile2.className = "learnkit-session-summary-tile";
+      const val2 = makeEl("span");
+      val2.className = "learnkit-session-summary-tile-val";
+      val2.textContent = `${retentionPercent}%`;
+      const lbl2 = makeEl("span");
+      lbl2.className = "learnkit-session-summary-tile-lbl";
+      lbl2.textContent = tx("ui.reviewer.summary.retention", "Retention");
+      tile2.appendChild(val2);
+      tile2.appendChild(lbl2);
+      grid.appendChild(tile2);
+
+      // 3. Time Invested
+      const durationMs = session && session._bcStamp ? Math.max(0, Date.now() - session._bcStamp) : 0;
+      const tile3 = makeEl("div");
+      tile3.className = "learnkit-session-summary-tile";
+      const val3 = makeEl("span");
+      val3.className = "learnkit-session-summary-tile-val";
+      val3.textContent = formatStudyDuration(durationMs);
+      const lbl3 = makeEl("span");
+      lbl3.className = "learnkit-session-summary-tile-lbl";
+      lbl3.textContent = tx("ui.reviewer.summary.timeInvested", "Time");
+      tile3.appendChild(val3);
+      tile3.appendChild(lbl3);
+      grid.appendChild(tile3);
+    } else {
+      // ── Serene All Caught Up Empty State ──
+      const badge = makeEl("div");
+      badge.className = "learnkit-session-summary-badge";
+      const icon = makeEl("span");
+      setIcon(icon, "check-circle-2");
+      queryFirst(icon, "svg")?.setAttribute("width", "24");
+      queryFirst(icon, "svg")?.setAttribute("height", "24");
+      badge.appendChild(icon);
+      summaryWrap.appendChild(badge);
+
+      const headline = makeEl("h2");
+      headline.className = "learnkit-session-summary-headline";
+      headline.textContent = tx("ui.reviewer.summary.allCaughtUp", "All Caught Up!");
+      summaryWrap.appendChild(headline);
+
+      const subtext = makeEl("p");
+      subtext.className = "learnkit-session-summary-subtext";
+      subtext.textContent = tx("ui.reviewer.summary.emptySubtext", "No cards are due for review right now. Ready for more?");
+      summaryWrap.appendChild(subtext);
+    }
+
+    // Study Dock Footer
+    const footer = makeEl("footer");
+    footer.className = "learnkit-session-study-dock flex justify-center items-center gap-3";
+
+    const returnBtn = makeTextButton({
       label: tx("ui.reviewer.session.returnToDecks", "Return to Decks"),
-      className: "learnkit-btn-toolbar",
+      className: hasReviewed ? "btn-primary px-6" : "learnkit-btn-toolbar",
       onClick: () => this.options.onBackToDecks?.(),
       kbd: "Q",
     });
-    footer.appendChild(backBtn);
+    footer.appendChild(returnBtn);
 
-    if (!isPractice && this.options.onStartPractice) {
+    if (this.options.onStartPractice) {
       const practiceBtn = makeTextButton({
-        label: tx("ui.reviewer.session.startPractice", "Start Practice"),
-        className: "btn-primary",
+        label: hasReviewed
+          ? tx("ui.reviewer.session.practiceMore", "Practice More")
+          : tx("ui.reviewer.session.startPractice", "Start Practice"),
+        className: hasReviewed ? "learnkit-btn-toolbar" : "btn-primary px-6",
         onClick: () => this.options.onStartPractice?.(),
-        kbd: "↵",
+        kbd: "P",
       });
       footer.appendChild(practiceBtn);
     }
