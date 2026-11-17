@@ -985,7 +985,7 @@ export class CardReviewPresenter {
         return true;
       }
       if (isAdvance) {
-        // Spacebar double-tap guard: require a brief 180ms cooldown after reveal
+        // Spacebar double-tap guard: require a brief 1500ms cooldown after reveal
         // before Space/Enter is accepted for grading, preventing accidental double-tap grades.
         if (Date.now() - this.answerRevealedAt < 1500) {
           ev.preventDefault();
@@ -1790,7 +1790,15 @@ export class CardReviewPresenter {
 // Compatibility Adapter (renderSessionMode)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function renderSessionMode(args: unknown): void {
+export function renderSessionMode(
+  args: CardReviewPresenterOptions & {
+    targetEl: HTMLElement;
+    skipEnabled?: boolean;
+    showAnswer?: boolean;
+    backToDecks?: () => void;
+    startPractice?: () => void;
+  },
+): void {
   const presenter = new CardReviewPresenter({
     container: args.container,
     session: args.session,
