@@ -63,7 +63,7 @@ const INTERFACE_LOCALE_REGISTRY: ReadonlyArray<InterfaceLocaleDefinition> = [
     nativeLabel: "简体中文",
     flagCode: "cn",
     status: "community",
-    builtin: true,
+    builtin: false,
   },
   {
     code: "fr",
@@ -125,7 +125,7 @@ function readObsidianLocalePreference(): string {
   type AppHost = { app?: { vault?: { getConfig?: (key: string) => unknown }; i18n?: { locale?: unknown } } };
   const host: AppHost = typeof window !== "undefined"
     ? (window as Window & AppHost)
-    : {} as AppHost;
+    : {};
   const app = host.app;
   const fromConfig = app?.vault?.getConfig?.("locale");
   const fromI18n = app?.i18n?.locale;

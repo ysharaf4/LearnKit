@@ -1017,6 +1017,8 @@ export class CardReviewPresenter {
       resetAos();
     }
 
+    const tx = (token: string, fallback: string) => t(this.options.interfaceLanguage, token, fallback);
+
     // ── Empty State ──
     if (!card) {
       this.renderEmptyState(wrap);
@@ -1030,10 +1032,30 @@ export class CardReviewPresenter {
     wrap.classList.add("learnkit-session-has-dock");
     const sourcePath = card.sourceNotePath || "";
 
-    // Header Topbar
+    // Header Topbar: Navigation (Left), Card Context (Center), Secondary Actions (Right)
     const header = makeEl("header");
     header.className = "learnkit-session-topbar";
     wrap.appendChild(header);
+
+    // Left: Return to Decks navigation
+    const navLeft = makeEl("div");
+    navLeft.className = "learnkit-session-topbar-left";
+    header.appendChild(navLeft);
+
+    const backBtn = makeTextButton({
+      label: tx("ui.reviewer.session.returnToDecks", "Decks"),
+      className: "learnkit-btn-toolbar learnkit-btn-back",
+      onClick: () => this.options.onBackToDecks?.(),
+      kbd: "Q",
+      icon: "arrow-left",
+      title: `${tx("ui.reviewer.session.returnToDecks", "Return to Decks")} (Q)`,
+    });
+    navLeft.appendChild(backBtn);
+
+    // Center: Deck & Card Title
+    const titleCenter = makeEl("div");
+    titleCenter.className = "learnkit-session-topbar-center";
+    header.appendChild(titleCenter);
 
     let displayTitle = card.title || "";
     if (card.type === "cloze" || card.type === "cloze-child") {
@@ -1046,31 +1068,66 @@ export class CardReviewPresenter {
     if (TYPE_LABELS.has(displayTitle.toLowerCase())) displayTitle = "";
 
     const titleText = (displayTitle || fallbackQuestionTitle(this.session, card, this.options.interfaceLanguage) || "").trim();
-    if (!titleText) {
-      header.classList.add("learnkit-session-topbar-hidden");
+    if (titleText) {
+      const titleWrap = makeEl("div");
+      titleWrap.className = "learnkit-session-topbar-title learnkit-question-title";
+      titleCenter.appendChild(titleWrap);
+
+      const deckIcon = makeEl("span");
+      deckIcon.className = "learnkit-deck-icon inline-flex items-center justify-center opacity-70 shrink-0";
+      setIcon(deckIcon, "folder");
+      queryFirst(deckIcon, "svg")?.setAttribute("width", "13");
+      queryFirst(deckIcon, "svg")?.setAttribute("height", "13");
+      titleWrap.appendChild(deckIcon);
+
+      const titleTextSpan = makeEl("span");
+      titleTextSpan.className = "truncate learnkit-deck-title-text";
+      titleWrap.appendChild(titleTextSpan);
+
+      const titleMd = String(titleText ?? "");
+      if (titleMd.includes("[[") || titleMd.includes("$")) {
+        void this.renderMarkdown(titleTextSpan, titleMd, sourcePath);
+      } else {
+        applyInlineMarkdownWithFlags(titleTextSpan, titleMd);
+      }
     }
 
-    const titleWrap = makeEl("div");
-    titleWrap.className = "learnkit-session-topbar-title learnkit-question-title";
-    header.appendChild(titleWrap);
+    // Right: Secondary Actions (Edit Card & More Menu)
+    const navRight = makeEl("div");
+    navRight.className = "learnkit-session-topbar-right learnkit-session-topbar-actions";
+    header.appendChild(navRight);
 
-    const deckIcon = makeEl("span");
-    deckIcon.className = "learnkit-deck-icon inline-flex items-center justify-center opacity-70 shrink-0";
-    setIcon(deckIcon, "folder");
-    queryFirst(deckIcon, "svg")?.setAttribute("width", "13");
-    queryFirst(deckIcon, "svg")?.setAttribute("height", "13");
-    titleWrap.appendChild(deckIcon);
-
-    const titleTextSpan = makeEl("span");
-    titleTextSpan.className = "truncate learnkit-deck-title-text";
-    titleWrap.appendChild(titleTextSpan);
-
-    const titleMd = String(titleText ?? "");
-    if (titleMd.includes("[[") || titleMd.includes("$")) {
-      void this.renderMarkdown(titleTextSpan, titleMd, sourcePath);
-    } else {
-      applyInlineMarkdownWithFlags(titleTextSpan, titleMd);
+    if (this.options.onEditCard) {
+      const editBtn = makeEl("button");
+      editBtn.type = "button";
+      editBtn.className = "btn-icon lk-review-edit-icon-btn";
+      editBtn.setAttribute("aria-label", tx("ui.reviewer.cardEditor.title", "Edit Card"));
+      editBtn.title = `${tx("ui.reviewer.cardEditor.title", "Edit Card")} (E)`;
+      const icon = makeEl("span");
+      setIcon(icon, "pencil");
+      queryFirst(icon, "svg")?.setAttribute("width", "14");
+      queryFirst(icon, "svg")?.setAttribute("height", "14");
+      editBtn.appendChild(icon);
+      editBtn.addEventListener("click", () => this.options.onEditCard?.(card));
+      navRight.appendChild(editBtn);
     }
+
+    const isPractice = !!this.options.practiceMode;
+    const menuRoot = makeHeaderMenu({
+      interfaceLanguage: this.options.interfaceLanguage,
+      canUndo: this.session instanceof StudySession ? this.session.canUndo : false,
+      onUndo: () => void this.undoLast(),
+      canSkip: !!this.options.enableSkipButton,
+      onSkip: () => this.skipCurrentCard(),
+      canBurySuspend: !isPractice,
+      onBury: () => void this.buryCurrentCard(),
+      onSuspend: () => void this.suspendCurrentCard(),
+      onExit: () => this.options.onBackToDecks?.(),
+      canReplayAudio: !!card.audioRef,
+      onReplayAudio: () => this.speakCard(card, this.showAnswer ? "back" : "front"),
+      compactTrigger: true,
+    });
+    navRight.appendChild(menuRoot);
 
     // Card Content Section
     const section = makeEl("section");
@@ -1412,15 +1469,19 @@ export class CardReviewPresenter {
     right.className = "flex items-center gap-2 learnkit-session-study-dock-right";
     footer.appendChild(right);
 
-    // Left controls: Back to Decks
-    const backBtn = makeTextButton({
-      label: tx("ui.reviewer.session.returnToDecks", "Decks"),
-      className: "learnkit-btn-toolbar learnkit-btn-back",
-      onClick: () => this.options.onBackToDecks?.(),
-      kbd: "Q",
-      icon: "arrow-left",
-    });
-    left.appendChild(backBtn);
+    // Left controls: Ghost Undo action
+    const canUndo = this.session instanceof StudySession ? this.session.canUndo : false;
+    if (canUndo) {
+      const undoBtn = makeTextButton({
+        label: tx("ui.reviewer.more.undo", "Undo"),
+        className: "learnkit-btn-toolbar learnkit-btn-ghost learnkit-btn-dock-undo",
+        onClick: () => void this.undoLast(),
+        kbd: "Z",
+        icon: "rotate-ccw",
+        title: `${tx("ui.shortcuts.undo", "Undo last review")} (Z)`,
+      });
+      left.appendChild(undoBtn);
+    }
 
     // Center controls: Reveal Answer or Rating Buttons
     if (!this.showAnswer) {
@@ -1517,47 +1578,18 @@ export class CardReviewPresenter {
       }
     }
 
-    // Right controls: Skip, Edit Card, More Menu
+    // Right controls: Ghost Skip action
     if (this.options.enableSkipButton) {
       const skipBtn = makeTextButton({
         label: tx("ui.widget.skip", "Skip"),
-        className: "learnkit-btn-toolbar",
+        className: "learnkit-btn-toolbar learnkit-btn-ghost learnkit-btn-dock-skip",
         onClick: () => this.skipCurrentCard(),
         kbd: "S",
+        icon: "skip-forward",
+        title: `${tx("ui.widget.skip", "Skip")} (S)`,
       });
       right.appendChild(skipBtn);
     }
-
-    if (this.options.onEditCard) {
-      const editBtn = makeEl("button");
-      editBtn.type = "button";
-      editBtn.className = "btn-icon lk-review-edit-icon-btn";
-      editBtn.setAttribute("aria-label", tx("ui.reviewer.cardEditor.title", "Edit Card"));
-      const icon = makeEl("span");
-      setIcon(icon, "pencil");
-      queryFirst(icon, "svg")?.setAttribute("width", "15");
-      queryFirst(icon, "svg")?.setAttribute("height", "15");
-      editBtn.appendChild(icon);
-      editBtn.addEventListener("click", () => this.options.onEditCard?.(card));
-      right.appendChild(editBtn);
-    }
-
-    // Header More-Menu
-    const menuRoot = makeHeaderMenu({
-      interfaceLanguage: this.options.interfaceLanguage,
-      canUndo: this.session instanceof StudySession ? this.session.canUndo : false,
-      onUndo: () => void this.undoLast(),
-      canSkip: !!this.options.enableSkipButton,
-      onSkip: () => this.skipCurrentCard(),
-      canBurySuspend: !isPractice,
-      onBury: () => void this.buryCurrentCard(),
-      onSuspend: () => void this.suspendCurrentCard(),
-      onExit: () => this.options.onBackToDecks?.(),
-      canReplayAudio: !!card.audioRef,
-      onReplayAudio: () => this.speakCard(card, this.showAnswer ? "back" : "front"),
-      compactTrigger: true,
-    });
-    right.appendChild(menuRoot);
   }
 
   private async renderMarkdown(container: HTMLElement, md: string, sourcePath: string): Promise<void> {

@@ -331,4 +331,75 @@ describe("CardReviewPresenter", () => {
 
     presenter.destroy();
   });
+
+  it("distills session chrome: places Decks, Edit Card, and More Menu in topbar, reserving study dock for active recall", async () => {
+    const onBackToDecks = vi.fn();
+    const onEditCard = vi.fn();
+    const session = StudySession.start({
+      scope: { type: "vault", key: "all", name: "Vault" },
+      store: mockStore,
+      cards: dummyCards,
+    });
+
+    const presenter = new CardReviewPresenter({
+      container,
+      session,
+      onBackToDecks,
+      onEditCard,
+      enableSkipButton: true,
+    });
+    presenter.mount();
+
+    const topbar = container.querySelector("header.learnkit-session-topbar");
+    expect(topbar).not.toBeNull();
+
+    // 1. Topbar holds back navigation ("Decks"), edit card, and more menu
+    const backBtn = topbar?.querySelector(".learnkit-btn-back") as HTMLButtonElement;
+    expect(backBtn).not.toBeNull();
+    expect(backBtn.textContent).toContain("Decks");
+    expect(backBtn.textContent).toContain("Q");
+    backBtn.click();
+    expect(onBackToDecks).toHaveBeenCalledOnce();
+
+    const editBtn = topbar?.querySelector(".lk-review-edit-icon-btn") as HTMLButtonElement;
+    expect(editBtn).not.toBeNull();
+    expect(editBtn.getAttribute("aria-label")).toBeTruthy();
+    editBtn.click();
+    expect(onEditCard).toHaveBeenCalledWith(dummyCards[0]);
+
+    const moreTrigger = topbar?.querySelector("[data-bc-action='reviewer-more-trigger']") as HTMLButtonElement;
+    expect(moreTrigger).not.toBeNull();
+
+    // 2. Footer dock is strictly active recall (Reveal Answer on front, no Decks or Edit Card)
+    const dock = container.querySelector("footer.learnkit-session-study-dock");
+    expect(dock).not.toBeNull();
+    expect(dock?.querySelector(".learnkit-btn-back")).toBeNull();
+    expect(dock?.querySelector(".lk-review-edit-icon-btn")).toBeNull();
+    expect(dock?.querySelector("[data-bc-action='reviewer-more-trigger']")).toBeNull();
+
+    // Reveal button is centered in dock on front
+    const revealBtn = dock?.querySelector(".learnkit-reveal-btn");
+    expect(revealBtn).not.toBeNull();
+
+    // Ghost skip button is present on the right
+    const skipBtn = dock?.querySelector(".learnkit-btn-dock-skip") as HTMLButtonElement;
+    expect(skipBtn).not.toBeNull();
+    expect(skipBtn.textContent).toContain("Skip");
+
+    // 3. Reveal answer: dock switches to rating group
+    presenter.revealAnswer();
+    const activeDock = container.querySelector("footer.learnkit-session-study-dock");
+    expect(activeDock?.querySelector(".learnkit-reveal-btn")).toBeNull();
+    expect(activeDock?.querySelector(".learnkit-session-study-dock-grade-group")).not.toBeNull();
+
+    // 4. Submit rating, then verify Undo appears on next card
+    await presenter.gradeCurrentRating("good");
+    expect(session.canUndo).toBe(true);
+
+    const undoBtn = container.querySelector("footer.learnkit-session-study-dock .learnkit-btn-dock-undo") as HTMLButtonElement;
+    expect(undoBtn).not.toBeNull();
+    expect(undoBtn.textContent).toContain("Undo");
+
+    presenter.destroy();
+  });
 });

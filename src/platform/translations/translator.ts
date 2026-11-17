@@ -14,7 +14,6 @@
 
 import { DEFAULT_INTERFACE_LOCALE, resolveInterfaceLocale, getDownloadableLocales } from "./locale-registry";
 import EN_BASE_JSON from "./locales/en-base.json";
-import ZH_CN_JSON from "./locales/zh-cn.json";
 import TOKEN_ALIASES_JSON from "./locales/token-aliases.json";
 
 type TranslationVars = Record<string, string | number>;
@@ -30,7 +29,6 @@ const TOKEN_ALIASES = TOKEN_ALIASES_JSON as Readonly<Record<string, string>>;
 const MESSAGE_BUNDLES: Record<string, Readonly<Record<string, string>>> = {
   "en-gb": EN_BASE,
   "en-us": EN_BASE,
-  "zh-cn": ZH_CN_JSON as Readonly<Record<string, string>>,
 };
 
 function interpolate(template: string, vars?: TranslationVars): string {
@@ -131,7 +129,7 @@ export async function loadCommunityLocale(pluginDir: string, code: string): Prom
   }
 
   const resolved = resolveInterfaceLocale(code);
-  if (resolved === "en-gb" || resolved === "en-us" || resolved === "zh-cn") {
+  if (resolved === "en-gb" || resolved === "en-us") {
     return true; // already bundled
   }
 
